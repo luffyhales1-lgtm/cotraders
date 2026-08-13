@@ -7,6 +7,7 @@ import { SignalCard } from '@/components/signals/SignalCard';
 import { Hero3DCanvas } from '@/components/effects/Hero3DCanvas';
 import { RiskCalculator } from '@/components/trading/RiskCalculator';
 import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
+import { AutoScannerService } from '@/components/telegram/AutoScannerService';
 import { fetchTopCryptos, subscribeBinanceTickerStream } from '@/services/binanceApi';
 import { generateLiveSignals } from '@/services/signalEngine';
 import { CoinTicker, Signal } from '@/types/trading';
@@ -21,8 +22,7 @@ import {
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
-  Send,
-  Bot
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -90,7 +90,7 @@ const Index: React.FC = () => {
             </h1>
 
             <p className="text-sm md:text-base text-slate-300 mt-3 leading-relaxed">
-              Zero-lag Binance Spot & Gold Order Block algorithms with automated Telegram Bot menu redirects.
+              Automated 1-minute market scanning across 1,000+ coins and Gold (XAU/USD) with direct Telegram bot trade dispatches.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 mt-6">
@@ -110,6 +110,9 @@ const Index: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* 1-Minute Auto Scanner Service Engine */}
+        <AutoScannerService />
 
         {/* Interactive Telegram Bot Menu Simulator Widget */}
         <div className="mb-10">
@@ -137,10 +140,10 @@ const Index: React.FC = () => {
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
-            <span className="text-xs text-slate-400 block font-medium">AI WIN ACCURACY</span>
-            <span className="text-2xl font-black text-cyan-400 font-mono mt-1 block">89.4%</span>
+            <span className="text-xs text-slate-400 block font-medium">AUTO-SCAN INTERVAL</span>
+            <span className="text-2xl font-black text-cyan-400 font-mono mt-1 block">EVERY 1 MIN</span>
             <span className="text-[11px] text-cyan-400 font-bold flex items-center gap-1 mt-1">
-              <Zap className="h-3.5 w-3.5" /> 5-Min Strategy Confluence
+              <Zap className="h-3.5 w-3.5" /> 60-Second Refresh Cycle
             </span>
           </div>
 
@@ -148,7 +151,7 @@ const Index: React.FC = () => {
             <span className="text-xs text-slate-400 block font-medium">TELEGRAM DISPATCH</span>
             <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">AUTOMATED</span>
             <span className="text-[11px] text-indigo-400 font-bold flex items-center gap-1 mt-1">
-              <Send className="h-3.5 w-3.5" /> Interactive Bot Menu
+              <Send className="h-3.5 w-3.5" /> Auto-Sends Trade Setups
             </span>
           </div>
         </div>

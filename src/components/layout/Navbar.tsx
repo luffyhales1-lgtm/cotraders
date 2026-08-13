@@ -13,7 +13,7 @@ import {
   Sparkles,
   Award,
   Lock,
-  Bot
+  Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,10 @@ export const Navbar: React.FC = () => {
               <span className="font-black text-lg text-slate-100 tracking-tight">LIVE TRADING</span>
               <span className="px-1.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI PRO</span>
             </div>
-            <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold">Binance & Gold Live Feeds</p>
+            <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold flex items-center gap-1">
+              <Radio className="h-3 w-3 text-emerald-400 animate-pulse" />
+              1-Min Auto-Scan & Telegram Active
+            </p>
           </div>
         </Link>
 

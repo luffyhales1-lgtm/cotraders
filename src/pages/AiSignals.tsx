@@ -5,6 +5,7 @@ import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { VIPGateModal } from '@/components/subscription/VIPGateModal';
 import { SignalCard } from '@/components/signals/SignalCard';
 import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
+import { AutoScannerService } from '@/components/telegram/AutoScannerService';
 import { CustomScannerSandbox } from '@/components/signals/CustomScannerSandbox';
 import { generateLiveSignals } from '@/services/signalEngine';
 import { Signal } from '@/types/trading';
@@ -75,7 +76,7 @@ const AiSignals: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/40 font-bold">
-                <Zap className="h-3.5 w-3.5 mr-1" /> 5-MIN DYNAMIC SCANNER
+                <Zap className="h-3.5 w-3.5 mr-1" /> 1-MIN AUTOMATED DISPATCH
               </Badge>
               <Badge variant="outline" className="text-slate-400 border-slate-800 font-mono">
                 1000+ Pairs & Gold
@@ -83,7 +84,7 @@ const AiSignals: React.FC = () => {
             </div>
             <h1 className="text-3xl font-black text-slate-100 mt-2">Live AI Trading Signals & Telegram Redirect</h1>
             <p className="text-sm text-slate-400 mt-1">
-              Multi-indicator algorithms evaluating SMC Order Blocks, EMA Crossovers & RSI Divergence.
+              Multi-indicator algorithms evaluating SMC Order Blocks, EMA Crossovers & RSI Divergence with 1-min auto Telegram dispatch.
             </p>
           </div>
 
@@ -111,6 +112,9 @@ const AiSignals: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* 1-Minute Auto Scanner Service */}
+        <AutoScannerService />
 
         <div className="mb-8">
           <TelegramBotSimulator />
