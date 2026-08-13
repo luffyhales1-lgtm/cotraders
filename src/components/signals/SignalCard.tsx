@@ -11,8 +11,23 @@ import {
   Check, 
   Clock,
   Sparkles,
+  ExternalLink<dyad-write path="src/components/signals/SignalCard.tsx" description="Upgraded high-end institutional SignalCard component with blur lock for free accounts, instant copy trade parameters, and direct Telegram dispatch trigger.">
+import React from 'react';
+import { Signal } from '@/types/trading';
+import { useAuth } from '@/context/AuthContext';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Lock, 
+  Crown, 
+  Target, 
+  Copy, 
+  Check, 
+  Clock,
+  Sparkles,
   ExternalLink,
-  Zap
+  Zap,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,10 +40,10 @@ interface SignalCardProps {
 }
 
 export const SignalCard: React.FC<SignalCardProps> = ({ signal, onSelectSymbol }) => {
-  const { user, instagramUrl } = useAuth();
+  const { user, instagramUrl, dispatchTelegramSignal, isVipMember } = useAuth();
   const [copied, setCopied] = React.useState<boolean>(false);
 
-  const isLocked = signal.isVipOnly && user?.tier === 'free';
+  const isLocked = signal.isVipOnly && !isVipMember;
   const isLong = signal.type === 'LONG';
 
   const copySignalToClipboard = () => {
@@ -51,8 +66,26 @@ Platform: LiveTrading AI Pro`;
     setTimeout(() => setCopied(false), 3000);
   };
 
+  const handleTelegramBroadcast = () => {
+    dispatchTelegramSignal({
+      pair: signal.pair,
+      type: signal.type,
+      strategy: signal.strategy,
+      timeframe: signal.timeframe,
+      entryPrice: signal.entryPrice,
+      target1: signal.target1,
+      target2: signal.target2,
+      target3: signal.target3,
+      stopLoss: signal.stopLoss,
+      leverage: signal.leverage,
+      winProbability: signal.winProbability,
+      riskReward: signal.riskReward,
+      rationale: signal.rationale,
+    });
+  };
+
   return (
-    <Card className={`relative overflow-hidden bg-slate-900/90 border transition-all duration-300 ${isLocked ? 'border-amber-500/30' : isLong ? 'border-emerald-500/30 hover:border-emerald-500/60' : 'border-rose-500/30 hover:border-rose-500/60'} shadow-xl`}>
+    <Card className={`relative overflow-hidden bg-slate-900/90 border transition-all duration-300 ${isLocked ? 'border-amber-500/30' : isLong ? 'border-emerald-500/40 hover:border-emerald-500/70 shadow-emerald-950/20' : 'border-rose-500/40 hover:border-rose-500/70 shadow-rose-950/20'} shadow-xl`}>
       
       {/* Top Banner Status */}
       <div className={`px-4 py-2 border-b flex items-center justify-between text-xs font-bold ${isLong ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
@@ -154,7 +187,16 @@ Platform: LiveTrading AI Pro`;
                 {copied ? 'Copied!' : 'Copy Signal'}
               </Button>
 
-              {onSelectSymbol && (
+              {user?.isAdmin ? (
+                <Button 
+                  onClick={handleTelegramBroadcast}
+                  size="sm" 
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold gap-1"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Telegram
+                </Button>
+              ) : onSelectSymbol ? (
                 <Button 
                   onClick={() => onSelectSymbol(signal.symbol)}
                   variant="outline" 
@@ -164,7 +206,7 @@ Platform: LiveTrading AI Pro`;
                   <Target className="h-3.5 w-3.5 text-indigo-400" />
                   Load Chart
                 </Button>
-              )}
+              ) : null}
             </div>
           </div>
         )}
