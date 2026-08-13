@@ -6,16 +6,14 @@ import {
   TrendingUp, 
   LineChart, 
   Scan, 
-  Newspaper, 
   Crown, 
   ShieldCheck, 
   LogOut, 
   LogIn,
-  Instagram,
   Sparkles,
   Award,
   Lock,
-  Send
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,20 +25,20 @@ export const Navbar: React.FC = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
+    <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-2xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
-            <Activity className="h-5 w-5 text-slate-950 font-bold" />
+            <Activity className="h-5 w-5 text-slate-950 font-black" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg text-slate-100 tracking-tight">LIVE TRADING</span>
-              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI PRO</span>
+              <span className="font-black text-lg text-slate-100 tracking-tight">LIVE TRADING</span>
+              <span className="px-1.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI PRO</span>
             </div>
-            <p className="text-[10px] text-slate-400 tracking-wider uppercase font-medium">Binance & Gold Signals</p>
+            <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold">Binance & Gold Live Feeds</p>
           </div>
         </Link>
 
@@ -50,7 +48,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-2 text-xs font-bold ${isActive('/') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <TrendingUp className="h-4 w-4 text-emerald-400" />
               Dashboard
@@ -61,7 +59,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/signals') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-1.5 text-xs font-semibold ${isActive('/signals') ? 'bg-slate-800 text-cyan-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-bold ${isActive('/signals') ? 'bg-slate-800 text-cyan-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Sparkles className="h-4 w-4 text-cyan-400" />
               AI Signals
@@ -73,7 +71,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/charts') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-1.5 text-xs font-semibold ${isActive('/charts') ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-bold ${isActive('/charts') ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <LineChart className="h-4 w-4 text-indigo-400" />
               Pro Charts
@@ -85,7 +83,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/scanner') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-1.5 text-xs font-semibold ${isActive('/scanner') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-bold ${isActive('/scanner') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Scan className="h-4 w-4 text-amber-400" />
               1000+ Scanner
@@ -97,7 +95,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/pricing') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/pricing') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-2 text-xs font-bold ${isActive('/pricing') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Crown className="h-4 w-4 text-amber-400" />
               VIP Plans
@@ -108,7 +106,7 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/analytics') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-1.5 text-xs font-semibold ${isActive('/analytics') ? 'bg-slate-800 text-purple-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-bold ${isActive('/analytics') ? 'bg-slate-800 text-purple-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Award className="h-4 w-4 text-purple-400" />
               Analytics

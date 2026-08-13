@@ -15,15 +15,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
   BarChart3, 
-  Clock, 
-  Layers, 
   Activity, 
   Zap, 
   TrendingUp, 
   TrendingDown, 
-  Maximize2,
-  Sliders,
-  DollarSign
+  Sliders
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -62,7 +58,8 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
       const latest = await fetchKlines(symbol, timeframe, 40);
       setCandles(latest);
       setOrderBook(generateMockOrderBook(currentPrice));
-    }, 10000);
+      setTrades(generateMockTrades(currentPrice));
+    }, 4000);
 
     return () => {
       active = false;
@@ -76,7 +73,6 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
 
   const isUp = change24h >= 0;
 
-  // Calculate moving average
   const chartWithData = candles.map((c, i, arr) => {
     const slice = arr.slice(Math.max(0, i - 10), i + 1);
     const avg = slice.reduce((acc, curr) => acc + curr.close, 0) / slice.length;
@@ -88,13 +84,13 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
   });
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+    <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
       
-      {/* Terminal Top Control Bar */}
+      {/* Terminal Header Bar */}
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
         
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
+          <div className="h-9 w-9 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center">
             <BarChart3 className="h-5 w-5 text-indigo-400" />
           </div>
           <div>
@@ -104,7 +100,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
                 {isUp ? '+' : ''}{change24h.toFixed(2)}%
               </Badge>
             </div>
-            <p className="text-xs font-mono text-slate-400">Live Binance Feed / Gold WebSocket Data</p>
+            <p className="text-xs font-mono text-slate-400">Live Binance Vision & Metals API Stream</p>
           </div>
         </div>
 
@@ -113,16 +109,15 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
             <div className="text-xl font-black text-slate-100">
               ${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString()}
             </div>
-            <div className="text-[10px] text-slate-400">Real-time Spot Execution</div>
+            <div className="text-[10px] text-slate-400">Real-time Live Tick</div>
           </div>
 
-          {/* Timeframe selector */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1 gap-1">
+          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
             {['1m', '5m', '15m', '1h', '4h', '1d'].map(tf => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md transition-all ${timeframe === tf ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${timeframe === tf ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
               >
                 {tf}
               </button>
@@ -160,7 +155,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
         <div className="lg:col-span-3 p-4 bg-slate-950/60 min-h-[420px] flex flex-col justify-between">
           {loading ? (
             <div className="h-[380px] flex items-center justify-center text-slate-400 gap-2 font-mono text-sm">
-              <Zap className="h-5 w-5 text-indigo-400 animate-spin" /> Fetching Live Binance Candlestick Stream...
+              <Zap className="h-5 w-5 text-indigo-400 animate-spin" /> Fetching Live Candlestick Stream...
             </div>
           ) : (
             <div className="h-[380px] w-full">
@@ -173,7 +168,6 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', color: '#f8fafc' }}
                     formatter={(val: any, name: string) => [`$${val}`, name.toUpperCase()]}
                   />
-                  {/* Candle Stick Bar Representation */}
                   <Bar dataKey="close" fill="#10b981" radius={[2, 2, 0, 0]} />
                   {showEma && <Line type="monotone" dataKey="ema" stroke="#f59e0b" strokeWidth={2} dot={false} name="EMA 20" />}
                 </ComposedChart>
@@ -181,7 +175,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
             </div>
           )}
 
-          {/* Quick Trade Panel Execution */}
+          {/* Quick Simulated Trade Bar */}
           <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-slate-400 border-slate-800 font-mono text-xs">
@@ -195,13 +189,13 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
             <div className="flex items-center gap-3">
               <Button 
                 onClick={() => handleSimulatedTrade('BUY')} 
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-1.5 px-6 shadow-lg shadow-emerald-900/30"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs gap-1.5 px-6 shadow-lg shadow-emerald-900/30"
               >
                 <TrendingUp className="h-4 w-4" /> LONG / BUY
               </Button>
               <Button 
                 onClick={() => handleSimulatedTrade('SELL')} 
-                className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs gap-1.5 px-6 shadow-lg shadow-rose-900/30"
+                className="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs gap-1.5 px-6 shadow-lg shadow-rose-900/30"
               >
                 <TrendingDown className="h-4 w-4" /> SHORT / SELL
               </Button>
@@ -228,7 +222,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
               ))}
             </div>
 
-            {/* Spread Price */}
+            {/* Mid Price */}
             <div className="my-2 py-1.5 px-2 bg-slate-900 border border-slate-800 text-center rounded font-bold text-slate-100 flex items-center justify-between">
               <span className="text-[10px] text-slate-400 font-sans">MID PRICE</span>
               <span>${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString()}</span>

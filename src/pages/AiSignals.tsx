@@ -4,10 +4,11 @@ import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { VIPGateModal } from '@/components/subscription/VIPGateModal';
 import { SignalCard } from '@/components/signals/SignalCard';
+import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
 import { CustomScannerSandbox } from '@/components/signals/CustomScannerSandbox';
 import { generateLiveSignals } from '@/services/signalEngine';
 import { Signal } from '@/types/trading';
-import { Sparkles, RefreshCw, Filter, ShieldCheck, Zap, Send } from 'lucide-react';
+import { RefreshCw, Zap, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
@@ -77,10 +78,10 @@ const AiSignals: React.FC = () => {
                 <Zap className="h-3.5 w-3.5 mr-1" /> 5-MIN DYNAMIC SCANNER
               </Badge>
               <Badge variant="outline" className="text-slate-400 border-slate-800 font-mono">
-                1000+ Pairs
+                1000+ Pairs & Gold
               </Badge>
             </div>
-            <h1 className="text-3xl font-black text-slate-100 mt-2">Live AI Trading Signals</h1>
+            <h1 className="text-3xl font-black text-slate-100 mt-2">Live AI Trading Signals & Telegram Redirect</h1>
             <p className="text-sm text-slate-400 mt-1">
               Multi-indicator algorithms evaluating SMC Order Blocks, EMA Crossovers & RSI Divergence.
             </p>
@@ -111,6 +112,10 @@ const AiSignals: React.FC = () => {
           </div>
         </div>
 
+        <div className="mb-8">
+          <TelegramBotSimulator />
+        </div>
+
         {!isVipMember ? (
           <div>
             <VIPGateModal 
@@ -118,7 +123,6 @@ const AiSignals: React.FC = () => {
               description="Free users can only view sample setups. Subscribe to VIP to view all live 5-minute signals and receive automated Telegram alerts."
             />
             
-            {/* Show 1 sample signal */}
             <div className="mt-8">
               <h3 className="text-lg font-bold text-slate-300 mb-4">Sample Signal Preview</h3>
               <div className="max-w-md">

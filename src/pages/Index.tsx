@@ -6,9 +6,10 @@ import { ProChart } from '@/components/charts/ProChart';
 import { SignalCard } from '@/components/signals/SignalCard';
 import { Hero3DCanvas } from '@/components/effects/Hero3DCanvas';
 import { RiskCalculator } from '@/components/trading/RiskCalculator';
+import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
 import { fetchTopCryptos, subscribeBinanceTickerStream } from '@/services/binanceApi';
-import { generateLiveSignals, INITIAL_NEWS } from '@/services/signalEngine';
-import { CoinTicker, Signal, MarketNews } from '@/types/trading';
+import { generateLiveSignals } from '@/services/signalEngine';
+import { CoinTicker, Signal } from '@/types/trading';
 import { useAuth } from '@/context/AuthContext';
 import { 
   TrendingUp, 
@@ -20,20 +21,17 @@ import {
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
-  Newspaper,
-  Instagram,
-  Lock,
-  Send
+  Send,
+  Bot
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 
 const Index: React.FC = () => {
-  const { user, instagramUrl, isVipMember } = useAuth();
+  const { instagramUrl, isVipMember } = useAuth();
   const [tickers, setTickers] = useState<CoinTicker[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
-  const [news, setNews] = useState<MarketNews[]>(INITIAL_NEWS);
   const [selectedCoin, setSelectedCoin] = useState<CoinTicker | null>(null);
 
   useEffect(() => {
@@ -49,7 +47,6 @@ const Index: React.FC = () => {
 
     loadInitial();
 
-    // Subscribe to live WebSocket ticker stream from Binance
     const unsubscribeWs = subscribeBinanceTickerStream((livePrices) => {
       if (!isSubscribed) return;
       setTickers(prev => prev.map(t => {
@@ -85,7 +82,7 @@ const Index: React.FC = () => {
           <div className="relative z-10 max-w-3xl">
             <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold mb-3 gap-1 px-3 py-1">
               <Zap className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
-              DIRECT BINANCE WEBSOCKET REAL-TIME FEED
+              DIRECT BINANCE WEBSOCKET & LIVE METALS FEED
             </Badge>
 
             <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
@@ -93,7 +90,7 @@ const Index: React.FC = () => {
             </h1>
 
             <p className="text-sm md:text-base text-slate-300 mt-3 leading-relaxed">
-              Zero-lag Binance Spot & Gold Order Block algorithms updating every 5 minutes with automated Telegram dispatches.
+              Zero-lag Binance Spot & Gold Order Block algorithms with automated Telegram Bot menu redirects.
             </p>
 
             <div className="flex flex-wrap items-center gap-4 mt-6">
@@ -114,23 +111,28 @@ const Index: React.FC = () => {
           </div>
         </div>
 
+        {/* Interactive Telegram Bot Menu Simulator Widget */}
+        <div className="mb-10">
+          <TelegramBotSimulator />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
             <span className="text-xs text-slate-400 block font-medium">SCANNER COVERAGE</span>
             <span className="text-2xl font-black text-slate-100 font-mono mt-1 block">1,000+ PAIRS</span>
             <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 mt-1">
-              <ShieldCheck className="h-3.5 w-3.5" /> Direct Live Stream
+              <ShieldCheck className="h-3.5 w-3.5" /> Direct WebSocket Stream
             </span>
           </div>
 
           <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
             <span className="text-xs text-slate-400 block font-medium">GOLD (XAU/USD) LIVE</span>
             <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
-              ${tickers.find(t => t.symbol === 'XAUUSDT')?.price.toFixed(2) || '2738.50'}
+              ${tickers.find(t => t.symbol === 'XAUUSDT')?.price.toFixed(2) || '2892.40'}
             </span>
             <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1 mt-1">
-              <TrendingUp className="h-3.5 w-3.5" /> Real-time Metals Stream
+              <TrendingUp className="h-3.5 w-3.5" /> Live Metals Stream
             </span>
           </div>
 
@@ -146,7 +148,7 @@ const Index: React.FC = () => {
             <span className="text-xs text-slate-400 block font-medium">TELEGRAM DISPATCH</span>
             <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">AUTOMATED</span>
             <span className="text-[11px] text-indigo-400 font-bold flex items-center gap-1 mt-1">
-              <Send className="h-3.5 w-3.5" /> Chat ID Broadcasting
+              <Send className="h-3.5 w-3.5" /> Interactive Bot Menu
             </span>
           </div>
         </div>
@@ -164,7 +166,7 @@ const Index: React.FC = () => {
                 <BarChart2 className="h-5 w-5 text-indigo-400" />
                 Live Spot Terminal: {selectedCoin.pair}
               </h2>
-              <span className="text-xs text-slate-400 font-mono">Real-time WebSocket feed active</span>
+              <span className="text-xs text-slate-400 font-mono">Real-time WebSocket & Metals stream active</span>
             </div>
             <ProChart 
               symbol={selectedCoin.symbol} 
@@ -175,7 +177,7 @@ const Index: React.FC = () => {
           </div>
         )}
 
-        {/* Live Top Gainers & Losers Grid */}
+        {/* Gainers & Losers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
@@ -236,7 +238,7 @@ const Index: React.FC = () => {
           </div>
         </div>
 
-        {/* Live AI Signals Teaser Sample */}
+        {/* Live Signals Preview */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -244,7 +246,7 @@ const Index: React.FC = () => {
                 <Sparkles className="h-6 w-6 text-cyan-400" />
                 Latest AI Trading Signals
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">Free users see 1 sample setup. Subscribe to unlock all 100+ live signals.</p>
+              <p className="text-xs text-slate-400 mt-0.5">Free users see 1 sample setup. Subscribe to unlock all live signals.</p>
             </div>
             <Link to="/signals">
               <Button size="sm" variant="outline" className="border-slate-700 text-slate-200 text-xs font-bold">
@@ -254,7 +256,7 @@ const Index: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {signals.slice(0, isVipMember ? 6 : 3).map((sig, idx) => (
+            {signals.slice(0, isVipMember ? 6 : 3).map((sig) => (
               <SignalCard 
                 key={sig.id} 
                 signal={sig} 
@@ -273,7 +275,7 @@ const Index: React.FC = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-bold text-slate-400">LiveTrading AI Pro Platform © {new Date().getFullYear()}</p>
-            <p className="text-[11px] text-slate-600 mt-0.5">Direct Binance Spot & Gold Stream Terminal</p>
+            <p className="text-[11px] text-slate-600 mt-0.5">Direct Binance Spot & Metals Stream Terminal</p>
           </div>
           <div className="flex items-center gap-4">
             <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-amber-400 font-medium">
