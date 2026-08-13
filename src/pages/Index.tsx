@@ -4,6 +4,8 @@ import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { ProChart } from '@/components/charts/ProChart';
 import { SignalCard } from '@/components/signals/SignalCard';
+import { Hero3DCanvas } from '@/components/effects/Hero3DCanvas';
+import { RiskCalculator } from '@/components/trading/RiskCalculator';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { generateLiveSignals, INITIAL_NEWS } from '@/services/signalEngine';
 import { CoinTicker, Signal, MarketNews } from '@/types/trading';
@@ -13,15 +15,14 @@ import {
   TrendingDown, 
   Sparkles, 
   Zap, 
-  Flame, 
-  Globe, 
   Crown, 
   ArrowUpRight, 
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
   Newspaper,
-  Instagram
+  Instagram,
+  Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,11 +63,13 @@ const Index: React.FC = () => {
         {/* Floating Upgrade Banner for Free Users */}
         <UpgradeBanner />
 
-        {/* Hero Banner Header */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 md:p-10 mb-8 shadow-2xl">
+        {/* Hero Banner Header with Ambient 3D Particle Canvas */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 border border-slate-800 p-6 md:p-10 mb-8 shadow-2xl">
+          <Hero3DCanvas />
+
           <div className="relative z-10 max-w-3xl">
             <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/40 font-bold mb-3 gap-1 px-3 py-1">
-              <Zap className="h-3.5 w-3.5 text-emerald-400" />
+              <Zap className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
               LIVE 5-MINUTE AUTOMATED AI STRATEGY ENGINE
             </Badge>
 
@@ -135,6 +138,11 @@ const Index: React.FC = () => {
               <Crown className="h-3.5 w-3.5" /> Verified Community
             </span>
           </div>
+        </div>
+
+        {/* Position Size Risk Calculator */}
+        <div className="mb-10">
+          <RiskCalculator />
         </div>
 
         {/* Selected Live Pro Chart */}

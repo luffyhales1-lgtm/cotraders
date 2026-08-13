@@ -7,15 +7,17 @@ import {
   Lock, 
   Crown, 
   Target, 
-  ShieldAlert, 
-  Zap, 
+  Copy, 
+  Check, 
   Clock,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { toast } from 'sonner';
 
 interface SignalCardProps {
   signal: Signal;
@@ -24,9 +26,30 @@ interface SignalCardProps {
 
 export const SignalCard: React.FC<SignalCardProps> = ({ signal, onSelectSymbol }) => {
   const { user, instagramUrl } = useAuth();
+  const [copied, setCopied] = React.useState<boolean>(false);
 
   const isLocked = signal.isVipOnly && user?.tier === 'free';
   const isLong = signal.type === 'LONG';
+
+  const copySignalToClipboard = () => {
+    const text = `🚨 LIVE AI TRADING SIGNAL 🚨
+Pair: ${signal.pair}
+Type: ${signal.type} (${signal.leverage})
+Strategy: ${signal.strategy}
+Entry: $${signal.entryPrice}
+TP1: $${signal.target1}
+TP2: $${signal.target2}
+TP3: $${signal.target3}
+Stop Loss: $${signal.stopLoss}
+Win Probability: ${signal.winProbability}%
+R:R Ratio: ${signal.riskReward}
+Platform: LiveTrading AI Pro`;
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success(`Signal parameters for ${signal.pair} copied to clipboard!`);
+    setTimeout(() => setCopied(false), 3000);
+  };
 
   return (
     <Card className={`relative overflow-hidden bg-slate-900/90 border transition-all duration-300 ${isLocked ? 'border-amber-500/30' : isLong ? 'border-emerald-500/30 hover:border-emerald-500/60' : 'border-rose-500/30 hover:border-rose-500/60'} shadow-xl`}>
@@ -120,17 +143,29 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onSelectSymbol }
               <span className="text-slate-300 font-bold">AI Rationale:</span> {signal.rationale}
             </p>
 
-            {onSelectSymbol && (
+            <div className="grid grid-cols-2 gap-2">
               <Button 
-                onClick={() => onSelectSymbol(signal.symbol)}
-                variant="outline" 
-                size="sm" 
-                className="w-full border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold gap-1.5"
+                onClick={copySignalToClipboard}
+                variant="outline"
+                size="sm"
+                className="border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold gap-1"
               >
-                <Target className="h-3.5 w-3.5 text-indigo-400" />
-                Load in Pro Chart
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-amber-400" />}
+                {copied ? 'Copied!' : 'Copy Signal'}
               </Button>
-            )}
+
+              {onSelectSymbol && (
+                <Button 
+                  onClick={() => onSelectSymbol(signal.symbol)}
+                  variant="outline" 
+                  size="sm" 
+                  className="border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold gap-1.5"
+                >
+                  <Target className="h-3.5 w-3.5 text-indigo-400" />
+                  Load Chart
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
