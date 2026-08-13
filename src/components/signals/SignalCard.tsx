@@ -9,25 +9,11 @@ import {
   Target, 
   Copy, 
   Check, 
-  Clock,
-  Sparkles,
-  ExternalLink<dyad-write path="src/components/signals/SignalCard.tsx" description="Upgraded high-end institutional SignalCard component with blur lock for free accounts, instant copy trade parameters, and direct Telegram dispatch trigger.">
-import React from 'react';
-import { Signal } from '@/types/trading';
-import { useAuth } from '@/context/AuthContext';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Lock, 
-  Crown, 
-  Target, 
-  Copy, 
-  Check, 
-  Clock,
-  Sparkles,
-  ExternalLink,
-  Zap,
-  Send
+  Clock, 
+  Sparkles, 
+  ExternalLink, 
+  Zap, 
+  Send 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
