@@ -13,7 +13,8 @@ import {
   LogIn,
   Instagram,
   Sparkles,
-  Award
+  Award,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +86,17 @@ export const Navbar: React.FC = () => {
             >
               <Scan className="h-4 w-4 text-amber-400" />
               1000+ Scanner
+            </Button>
+          </Link>
+
+          <Link to="/pricing">
+            <Button 
+              variant={isActive('/pricing') ? 'secondary' : 'ghost'} 
+              size="sm"
+              className={`gap-2 text-xs font-semibold ${isActive('/pricing') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+            >
+              <Crown className="h-4 w-4 text-amber-400" />
+              VIP Pricing
             </Button>
           </Link>
 

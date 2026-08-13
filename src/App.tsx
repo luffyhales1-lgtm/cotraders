@@ -10,6 +10,7 @@ import ProChartsPage from "./pages/ProChartsPage";
 import MarketScannerPage from "./pages/MarketScannerPage";
 import NewsPage from "./pages/NewsPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import PricingPage from "./pages/PricingPage";
 import AdminPage from "./pages/AdminPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/signals" element={<AiSignals />} />
             <Route path="/charts" element={<ProChartsPage />} />
             <Route path="/scanner" element={<MarketScannerPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/admin" element={<AdminPage />} />
