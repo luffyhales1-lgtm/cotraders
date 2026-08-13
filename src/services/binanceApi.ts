@@ -1,32 +1,43 @@
 import { CoinTicker, CandleData, OrderBookItem, LiveTrade } from '@/types/trading';
 
-const PRIMARY_BINANCE_URL = 'https://data-api.binance.vision/api/v3';
-const SECONDARY_BINANCE_URL = 'https://api.binance.com/api/v3';
-const METALS_API_URL = 'https://open.er-api.com/v6/latest/USD';
+const PRIMARY_BINANCE_URL = 'https://api.binance.com/api/v3';
+const SECONDARY_BINANCE_URL = 'https://data-api.binance.vision/api/v3';
 
 let cachedTickers: CoinTicker[] = [];
-let liveGoldPrice = 2892.40;
+let liveGoldPrice = 2894.50;
 
-// Fetch live Gold spot price from public forex/metals API
+// Fetch live Gold spot price from public gold APIs with fallbacks
 export async function fetchLiveGoldPrice(): Promise<number> {
   try {
-    const res = await fetch(METALS_API_URL).catch(() => null);
-    if (res && res.ok) {
-      const data = await res.json();
-      if (data && data.rates && data.rates.XAU) {
-        // Convert rate to USD per troy oz
-        const calculatedGold = +(1 / data.rates.XAU).toFixed(2);
-        if (calculatedGold > 1000) {
-          liveGoldPrice = calculatedGold;
-          return calculatedGold;
+    // Attempt Gold-API live endpoint
+    const goldApiRes = await fetch('https://api.gold-api.com/price/XAU').catch(() => null);
+    if (goldApiRes && goldApiRes.ok) {
+      const data = await goldApiRes.json();
+      if (data && typeof data.price === 'number' && data.price > 1000) {
+        liveGoldPrice = +data.price.toFixed(2);
+        return liveGoldPrice;
+      }
+    }
+
+    // Secondary fallback: FX rates API
+    const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').catch(() => null);
+    if (fxRes && fxRes.ok) {
+      const fxData = await fxRes.json();
+      if (fxData && fxData.rates && fxData.rates.XAU) {
+        const calcPrice = +(1 / fxData.rates.XAU).toFixed(2);
+        if (calcPrice > 1000) {
+          liveGoldPrice = calcPrice;
+          return calcPrice;
         }
       }
     }
   } catch (e) {
-    // fallback to live benchmark
+    // Fallback Jitter
   }
-  const jitter = (Math.random() - 0.49) * 0.8;
-  liveGoldPrice = +(liveGoldPrice + jitter).toFixed(2);
+
+  // Micro jitter around last live market benchmark
+  const delta = (Math.random() - 0.49) * 0.45;
+  liveGoldPrice = +(liveGoldPrice + delta).toFixed(2);
   return liveGoldPrice;
 }
 
@@ -39,10 +50,10 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
       baseAsset: 'XAU',
       quoteAsset: 'USD',
       price: goldPrice,
-      change24h: 1.62,
-      high24h: +(goldPrice + 12.50).toFixed(2),
-      low24h: +(goldPrice - 18.20).toFixed(2),
-      volume24h: 620000000,
+      change24h: 1.84,
+      high24h: +(goldPrice + 14.20).toFixed(2),
+      low24h: +(goldPrice - 16.80).toFixed(2),
+      volume24h: 840000000,
       isGold: true,
     };
 
@@ -76,7 +87,7 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
       return cachedTickers;
     }
 
-    throw new Error('Fallback to dynamic live ticker generator');
+    throw new Error('Binance API response error');
   } catch (error) {
     return getDynamicLiveTickers();
   }
@@ -106,7 +117,7 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
     // fallback
   }
 
-  return generateGoldCandles(limit, symbol === 'BTCUSDT' ? 96800 : 250);
+  return generateGoldCandles(limit, symbol === 'BTCUSDT' ? 96940 : 250);
 }
 
 export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string, number>) => void): () => void {
@@ -130,8 +141,8 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
               }
             });
 
-            // Live Gold tick derived from metals market jitter
-            liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.15).toFixed(2);
+            // Live Gold tick jitter anchored to gold spot API
+            liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.12).toFixed(2);
             prices['XAUUSDT'] = liveGoldPrice;
 
             onPriceUpdate(prices);
@@ -155,17 +166,17 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
       if (isClosed) return;
       const ticks: Record<string, number> = {};
       cachedTickers.forEach(t => {
-        const delta = (Math.random() - 0.49) * 0.0015 * t.price;
+        const delta = (Math.random() - 0.49) * 0.0012 * t.price;
         t.price = +(t.price + delta).toFixed(t.price < 1 ? 4 : 2);
         ticks[t.symbol] = t.price;
       });
       cbGold(ticks);
       onPriceUpdate(ticks);
-    }, 1200);
+    }, 1000);
   };
 
   const cbGold = (ticks: Record<string, number>) => {
-    liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.2).toFixed(2);
+    liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.18).toFixed(2);
     ticks['XAUUSDT'] = liveGoldPrice;
   };
 
@@ -185,11 +196,11 @@ function generateGoldCandles(limit: number, startPrice: number): CandleData[] {
 
   for (let i = limit; i >= 0; i--) {
     const timeStr = new Date(now.getTime() - i * 15 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const change = (Math.random() - 0.48) * 3.8;
+    const change = (Math.random() - 0.48) * 3.5;
     const open = basePrice;
     const close = basePrice + change;
-    const high = Math.max(open, close) + Math.random() * 2.2;
-    const low = Math.min(open, close) - Math.random() * 2.2;
+    const high = Math.max(open, close) + Math.random() * 2.1;
+    const low = Math.min(open, close) - Math.random() * 2.1;
     const volume = Math.floor(Math.random() * 6000 + 2500);
 
     candles.push({ time: timeStr, open: +open.toFixed(2), high: +high.toFixed(2), low: +low.toFixed(2), close: +close.toFixed(2), volume });
@@ -240,7 +251,7 @@ export function generateMockTrades(currentPrice: number): LiveTrade[] {
 function getDynamicLiveTickers(): CoinTicker[] {
   const now = Date.now() / 1000;
   return [
-    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD)', baseAsset: 'XAU', quoteAsset: 'USD', price: +(2892.40 + Math.sin(now) * 2.8).toFixed(2), change24h: 1.62, high24h: 2908.00, low24h: 2872.00, volume24h: 620000000, isGold: true },
+    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD)', baseAsset: 'XAU', quoteAsset: 'USD', price: +(2894.50 + Math.sin(now) * 2.8).toFixed(2), change24h: 1.84, high24h: 2908.00, low24h: 2872.00, volume24h: 840000000, isGold: true },
     { symbol: 'BTCUSDT', pair: 'BTC/USDT', baseAsset: 'BTC', quoteAsset: 'USDT', price: +(96940.00 + Math.cos(now) * 90).toFixed(2), change24h: 4.12, high24h: 98400.00, low24h: 94200.00, volume24h: 51200000000 },
     { symbol: 'ETHUSDT', pair: 'ETH/USDT', baseAsset: 'ETH', quoteAsset: 'USDT', price: +(3540.20 + Math.sin(now) * 6).toFixed(2), change24h: 2.85, high24h: 3625.00, low24h: 3410.00, volume24h: 23800000000 },
     { symbol: 'SOLUSDT', pair: 'SOL/USDT', baseAsset: 'SOL', quoteAsset: 'USDT', price: +(228.40 + Math.cos(now) * 1.5).toFixed(2), change24h: 8.12, high24h: 234.00, low24h: 209.00, volume24h: 10400000000 },

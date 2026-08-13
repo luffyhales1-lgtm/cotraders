@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Signal } from '@/types/trading';
 import { useAuth } from '@/context/AuthContext';
+import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -13,7 +14,8 @@ import {
   Sparkles, 
   ExternalLink, 
   Zap, 
-  Send 
+  Send,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,10 +29,25 @@ interface SignalCardProps {
 
 export const SignalCard: React.FC<SignalCardProps> = ({ signal, onSelectSymbol }) => {
   const { user, instagramUrl, dispatchTelegramSignal, isVipMember } = useAuth();
-  const [copied, setCopied] = React.useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [showChartModal, setShowChartModal] = useState<boolean>(false);
 
   const isLocked = signal.isVipOnly && !isVipMember;
   const isLong = signal.type === 'LONG';
+
+  // Dynamic Chart Setup Screenshot Data URL
+  const chartImage = generateTradeSetupChartImage({
+    pair: signal.pair,
+    type: signal.type,
+    entryPrice: signal.entryPrice,
+    target1: signal.target1,
+    target2: signal.target2,
+    target3: signal.target3,
+    stopLoss: signal.stopLoss,
+    timeframe: signal.timeframe,
+    strategy: signal.strategy,
+    winProbability: signal.winProbability,
+  });
 
   const copySignalToClipboard = () => {
     const text = `🚨 LIVE AI TRADING SIGNAL 🚨
@@ -67,6 +84,7 @@ Platform: LiveTrading AI Pro`;
       winProbability: signal.winProbability,
       riskReward: signal.riskReward,
       rationale: signal.rationale,
+      chartScreenshotUrl: chartImage,
     });
   };
 
@@ -164,13 +182,13 @@ Platform: LiveTrading AI Pro`;
 
             <div className="grid grid-cols-2 gap-2">
               <Button 
-                onClick={copySignalToClipboard}
+                onClick={() => setShowChartModal(true)}
                 variant="outline"
                 size="sm"
-                className="border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold gap-1"
+                className="border-slate-800 hover:bg-slate-800 text-cyan-300 text-xs font-bold gap-1"
               >
-                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-amber-400" />}
-                {copied ? 'Copied!' : 'Copy Signal'}
+                <ImageIcon className="h-3.5 w-3.5 text-cyan-400" />
+                Chart Screenshot
               </Button>
 
               {user?.isAdmin ? (
@@ -198,6 +216,38 @@ Platform: LiveTrading AI Pro`;
         )}
 
       </CardContent>
+
+      {/* Chart Screenshot Modal */}
+      {showChartModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+              <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                <ImageIcon className="h-4 w-4 text-cyan-400" />
+                {signal.pair} Trade Setup Chart Screenshot
+              </span>
+              <Button size="sm" variant="ghost" onClick={() => setShowChartModal(false)} className="text-slate-400">
+                Close
+              </Button>
+            </div>
+
+            <img 
+              src={chartImage} 
+              alt="Trade Setup Chart Screenshot" 
+              className="w-full rounded-xl border border-slate-800 shadow-lg"
+            />
+
+            <div className="mt-3 flex items-center justify-between">
+              <Button size="sm" variant="outline" onClick={copySignalToClipboard} className="border-slate-800 text-xs font-bold text-slate-300">
+                {copied ? 'Parameters Copied!' : 'Copy Signal text'}
+              </Button>
+              <Button size="sm" onClick={() => setShowChartModal(false)} className="bg-indigo-600 text-white font-bold text-xs">
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </Card>
   );

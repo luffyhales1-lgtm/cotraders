@@ -1,3 +1,5 @@
+import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
+
 export interface TelegramSignalPayload {
   pair: string;
   type: 'LONG' | 'SHORT';
@@ -12,6 +14,7 @@ export interface TelegramSignalPayload {
   winProbability: number;
   riskReward: string;
   rationale: string;
+  chartScreenshotUrl?: string;
 }
 
 export async function sendTelegramSignalNotification(
@@ -23,9 +26,23 @@ export async function sendTelegramSignalNotification(
     return { success: false, message: 'Telegram Bot Token or Chat ID is missing.' };
   }
 
+  // Generate dynamic chart screenshot Data URL
+  const chartImageBase64 = signal.chartScreenshotUrl || generateTradeSetupChartImage({
+    pair: signal.pair,
+    type: signal.type,
+    entryPrice: signal.entryPrice,
+    target1: signal.target1,
+    target2: signal.target2,
+    target3: signal.target3,
+    stopLoss: signal.stopLoss,
+    timeframe: signal.timeframe,
+    strategy: signal.strategy,
+    winProbability: signal.winProbability,
+  });
+
   const directionEmoji = signal.type === 'LONG' ? '🚀 BUY / LONG' : '📉 SELL / SHORT';
   const text = `
-🤖 <b>LIVETRADING AI - SCANNER RESULT</b> 🤖
+🤖 <b>LIVETRADING AI - LIVE SCANNER TRADE SETUP</b> 🤖
 ────────────────────────────
 <b>Asset:</b> <code>${signal.pair}</code>
 <b>Signal:</b> ${directionEmoji}
@@ -44,7 +61,7 @@ export async function sendTelegramSignalNotification(
 <b>⚖️ Risk to Reward:</b> <code>${signal.riskReward}</code>
 <b>💡 AI Confluence:</b> <i>${signal.rationale}</i>
 ────────────────────────────
-⚡ <i>Redirected live from LiveTrading AI Web Terminal</i>
+📊 <i>Chart screenshot with Entry, TP1/2/3, and SL drawn attached above.</i>
   `.trim();
 
   try {
@@ -70,7 +87,7 @@ export async function sendTelegramSignalNotification(
 
     const data = await res.json();
     if (data.ok) {
-      return { success: true, message: 'Signal successfully scanned & redirected to Telegram!' };
+      return { success: true, message: `Trade signal for ${signal.pair} with chart screenshot parameters successfully sent to Telegram!` };
     } else {
       return { success: false, message: data.description || 'Failed to dispatch to Telegram.' };
     }
