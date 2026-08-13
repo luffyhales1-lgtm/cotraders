@@ -21,6 +21,7 @@ export interface CoinTicker {
   low24h: number;
   volume24h: number;
   isGold?: boolean;
+  isFutures?: boolean;
 }
 
 export type SignalType = 'LONG' | 'SHORT';
@@ -31,7 +32,9 @@ export type StrategyName =
   | 'RSI Bullish Divergence' 
   | 'MACD Trend Impulse' 
   | 'Supertrend Breakout' 
-  | 'Volume Profile Rejection';
+  | 'Volume Profile Rejection'
+  | 'Footprint Delta & Spoofing Sweep'
+  | 'ICT Liquidity Pool Grab';
 
 export interface Signal {
   id: string;
@@ -52,6 +55,15 @@ export interface Signal {
   timeframe: string;
   rationale: string;
   isVipOnly: boolean;
+  isScalp?: boolean;
+  // Deep Institutional Parameters
+  footprintDelta?: number; // e.g., +1420 CVD (Cumulative Volume Delta)
+  spoofingWall?: string; // e.g., "Ask Wall $97,200 (Spoofing Detected)"
+  liquidityWall?: string; // e.g., "Bid Liquidity Wall $95,800 ($14.2M)"
+  orderBlockZone?: string; // e.g., "Bullish OB $96,100 - $96,400"
+  demandSupplyZone?: string; // e.g., "15m Institutional Demand Zone"
+  ictPattern?: string; // e.g., "Judas Swing & Liquidity Sweep"
+  momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';
 }
 
 export interface CandleData {
@@ -87,4 +99,17 @@ export interface MarketNews {
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
   isVipOnly: boolean;
   url?: string;
+}
+
+export interface BacktestSummary {
+  period: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  totalPnLPercent: number;
+  totalPnLUsd: number;
+  bestTradePercent: number;
+  worstTradePercent: number;
+  timestamp: string;
 }

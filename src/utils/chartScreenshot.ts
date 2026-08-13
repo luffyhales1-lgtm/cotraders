@@ -13,6 +13,9 @@ export interface TradeChartParams {
   timeframe?: string;
   strategy?: string;
   winProbability?: number;
+  footprintDelta?: number;
+  orderBlockZone?: string;
+  spoofingWall?: string;
 }
 
 export function generateTradeSetupChartImage(params: TradeChartParams): string {
@@ -30,13 +33,16 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
     target2, 
     target3, 
     stopLoss, 
-    support1 = +(entryPrice * 0.982).toFixed(2),
-    support2 = +(entryPrice * 0.965).toFixed(2),
+    support1 = +(entryPrice * 0.985).toFixed(2),
+    support2 = +(entryPrice * 0.968).toFixed(2),
     resistance1 = +(entryPrice * 1.018).toFixed(2),
-    resistance2 = +(entryPrice * 1.035).toFixed(2),
-    timeframe = '5m', 
-    strategy = 'SMC Order Block', 
-    winProbability = 92 
+    resistance2 = +(entryPrice * 1.036).toFixed(2),
+    timeframe = '1m / 5m', 
+    strategy = 'SMC Order Block & Footprint Delta', 
+    winProbability = 94,
+    footprintDelta = +1420,
+    orderBlockZone = 'SMC Bullish OB Zone',
+    spoofingWall = 'Ask Spoof Wall Absorbed'
   } = params;
 
   const isLong = type === 'LONG';
@@ -47,26 +53,26 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
 
   // Top Dark Header Bar
   ctx.fillStyle = '#0f172a';
-  ctx.fillRect(0, 0, canvas.width, 75);
+  ctx.fillRect(0, 0, canvas.width, 80);
 
-  // Header Title & Badge
+  // Header Title & Subtitle
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 22px sans-serif';
-  ctx.fillText(`LIVETRADING AI - ${pair}`, 24, 38);
+  ctx.fillText(`LIVETRADING AI FUTURES - ${pair}`, 24, 38);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '13px monospace';
-  ctx.fillText(`Strategy: ${strategy} | Timeframe: ${timeframe} | Win Prob: ${winProbability}%`, 24, 60);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText(`FOOTPRINT CVD: ${footprintDelta > 0 ? '+' : ''}${footprintDelta} | OB: ${orderBlockZone} | SPOOFING: ${spoofingWall}`, 24, 62);
 
   // Signal Badge (LONG/SHORT)
   const badgeColor = isLong ? '#10b981' : '#f43f5e';
   ctx.fillStyle = badgeColor;
-  ctx.fillRect(canvas.width - 210, 18, 185, 38);
+  ctx.fillRect(canvas.width - 210, 18, 185, 42);
 
   ctx.fillStyle = '#090d16';
   ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${type} SETUP (LIVE)`, canvas.width - 118, 42);
+  ctx.fillText(`${type} SCALP (${winProbability}%)`, canvas.width - 118, 44);
   ctx.textAlign = 'left';
 
   // Grid Lines
@@ -74,11 +80,11 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
   ctx.lineWidth = 1;
   for (let x = 80; x < canvas.width - 190; x += 80) {
     ctx.beginPath();
-    ctx.moveTo(x, 75);
+    ctx.moveTo(x, 80);
     ctx.lineTo(x, canvas.height - 45);
     ctx.stroke();
   }
-  for (let y = 105; y < canvas.height - 45; y += 60) {
+  for (let y = 110; y < canvas.height - 45; y += 55) {
     ctx.beginPath();
     ctx.moveTo(60, y);
     ctx.lineTo(canvas.width - 190, y);
@@ -89,26 +95,26 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
   const allVals = [stopLoss, target3, entryPrice, support1, support2, resistance1, resistance2];
   const minVal = Math.min(...allVals) * 0.994;
   const maxVal = Math.max(...allVals) * 1.006;
-  const chartHeight = canvas.height - 140;
+  const chartHeight = canvas.height - 145;
 
   const getYPos = (val: number) => {
     const ratio = (val - minVal) / (maxVal - minVal);
     return canvas.height - 55 - ratio * chartHeight;
   };
 
-  // Draw Shaded Support Zone Box
+  // Draw Shaded Support / Demand Zone Box
   const suppY1 = getYPos(support1);
   const suppY2 = getYPos(support2);
-  ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
+  ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
   ctx.fillRect(60, Math.min(suppY1, suppY2), canvas.width - 250, Math.abs(suppY2 - suppY1) || 18);
 
   // Draw Shaded Resistance Zone Box
   const resY1 = getYPos(resistance1);
   const resY2 = getYPos(resistance2);
-  ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+  ctx.fillStyle = 'rgba(244, 63, 94, 0.14)';
   ctx.fillRect(60, Math.min(resY1, resY2), canvas.width - 250, Math.abs(resY2 - resY1) || 18);
 
-  // Draw Mock Live Candlesticks
+  // Draw Mock Live Candlesticks with Volume Footprint
   let currPrice = entryPrice * 0.998;
   const candleWidth = 14;
   const candleGap = 20;
@@ -139,7 +145,7 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
     currPrice = close;
   }
 
-  // Draw Horizontal Setup Lines (Entry, TP1, TP2, TP3, Stop Loss, S/R)
+  // Draw Horizontal Setup Lines
   const drawLevelLine = (price: number, label: string, color: string, isDashed = true, isThin = false) => {
     const y = getYPos(price);
 
@@ -154,7 +160,7 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Price Pill Tag on Right Axis
+    // Price Tag Box
     ctx.fillStyle = color;
     ctx.fillRect(canvas.width - 185, y - 11, 165, 22);
 
@@ -163,32 +169,21 @@ export function generateTradeSetupChartImage(params: TradeChartParams): string {
     ctx.fillText(`${label}: $${price}`, canvas.width - 178, y + 4);
   };
 
-  // Draw Key Resistance Levels
-  drawLevelLine(resistance2, 'RESISTANCE 2 (R2)', '#f43f5e', true, true);
-  drawLevelLine(resistance1, 'RESISTANCE 1 (R1)', '#fb7185', true, true);
-
-  // Draw Targets
+  drawLevelLine(resistance1, 'RESISTANCE (R1)', '#fb7185', true, true);
   drawLevelLine(target3, 'TP3', '#34d399');
   drawLevelLine(target2, 'TP2', '#10b981');
-  drawLevelLine(target1, 'TP1', '#059669');
-
-  // Draw Entry Line
+  drawLevelLine(target1, 'TP1 (SCALP)', '#059669');
   drawLevelLine(entryPrice, 'ENTRY PRICE', '#38bdf8', false);
-
-  // Draw Key Support Levels
-  drawLevelLine(support1, 'SUPPORT 1 (S1)', '#34d399', true, true);
-  drawLevelLine(support2, 'SUPPORT 2 (S2)', '#10b981', true, true);
-
-  // Draw Stop Loss Line
+  drawLevelLine(support1, 'SUPPORT (S1)', '#34d399', true, true);
   drawLevelLine(stopLoss, 'STOP LOSS', '#f43f5e', true);
 
-  // Bottom Footer Timestamp Tag
+  // Bottom Footer
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, canvas.height - 38, canvas.width, 38);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '12px sans-serif';
-  ctx.fillText(`Binance & Forex Live API Stream • Support & Resistance Analysis • ${new Date().toLocaleTimeString()} UTC`, 24, canvas.height - 14);
+  ctx.fillText(`Binance Futures & Gold Live Stream • Footprint Delta & Spoofing Analysis • ${new Date().toLocaleTimeString()} UTC`, 24, canvas.height - 14);
 
   return canvas.toDataURL('image/png');
 }

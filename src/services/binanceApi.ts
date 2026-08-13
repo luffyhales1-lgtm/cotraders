@@ -1,23 +1,21 @@
 import { CoinTicker, CandleData, OrderBookItem, LiveTrade } from '@/types/trading';
 
-const PRIMARY_BINANCE_URL = 'https://api.binance.com/api/v3';
-const SECONDARY_BINANCE_URL = 'https://data-api.binance.vision/api/v3';
+const BINANCE_FUTURES_URL = 'https://fapi.binance.com/fapi/v1';
+const BINANCE_SPOT_URL = 'https://api.binance.com/api/v3';
 
 let cachedTickers: CoinTicker[] = [];
 let liveGoldPrice = 2894.50;
 
-// Fetch Live Forex Rates (EUR/USD, GBP/USD, USD/JPY, AUD/USD, XAU/USD)
+// Fetch Live Forex & Gold Spot API
 export async function fetchLiveForexRates(): Promise<Record<string, number>> {
   const forexPrices: Record<string, number> = {
     'XAUUSD': liveGoldPrice,
     'EURUSD': 1.0845,
     'GBPUSD': 1.2980,
     'USDJPY': 152.40,
-    'AUDUSD': 0.6580,
   };
 
   try {
-    // Live Gold API
     const goldRes = await fetch('https://api.gold-api.com/price/XAU').catch(() => null);
     if (goldRes && goldRes.ok) {
       const gData = await goldRes.json();
@@ -27,34 +25,27 @@ export async function fetchLiveForexRates(): Promise<Record<string, number>> {
       }
     }
 
-    // Live Forex Spot API
     const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').catch(() => null);
     if (fxRes && fxRes.ok) {
       const fxData = await fxRes.json();
       if (fxData && fxData.rates) {
-        const rates = fxData.rates;
-        if (rates.EUR) forexPrices['EURUSD'] = +(1 / rates.EUR).toFixed(4);
-        if (rates.GBP) forexPrices['GBPUSD'] = +(1 / rates.GBP).toFixed(4);
-        if (rates.JPY) forexPrices['USDJPY'] = +rates.JPY.toFixed(2);
-        if (rates.AUD) forexPrices['AUDUSD'] = +(1 / rates.AUD).toFixed(4);
-        if (rates.XAU) {
-          liveGoldPrice = +(1 / rates.XAU).toFixed(2);
+        if (fxData.rates.EUR) forexPrices['EURUSD'] = +(1 / fxData.rates.EUR).toFixed(4);
+        if (fxData.rates.GBP) forexPrices['GBPUSD'] = +(1 / fxData.rates.GBP).toFixed(4);
+        if (fxData.rates.JPY) forexPrices['USDJPY'] = +fxData.rates.JPY.toFixed(2);
+        if (fxData.rates.XAU) {
+          liveGoldPrice = +(1 / fxData.rates.XAU).toFixed(2);
           forexPrices['XAUUSD'] = liveGoldPrice;
         }
       }
     }
   } catch (e) {
-    // Fallback
+    // fallback
   }
 
   return forexPrices;
 }
 
-export async function fetchLiveGoldPrice(): Promise<number> {
-  const forex = await fetchLiveForexRates();
-  return forex['XAUUSD'] || liveGoldPrice;
-}
-
+// Fetch Binance Futures Live Tickers
 export async function fetchTopCryptos(): Promise<CoinTicker[]> {
   try {
     const forex = await fetchLiveForexRates();
@@ -62,7 +53,7 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
     const forexTickers: CoinTicker[] = [
       {
         symbol: 'XAUUSDT',
-        pair: 'XAU/USD (GOLD)',
+        pair: 'XAU/USD (GOLD SPOT)',
         baseAsset: 'XAU',
         quoteAsset: 'USD',
         price: forex['XAUUSD'],
@@ -82,34 +73,13 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
         high24h: +(forex['EURUSD'] * 1.005).toFixed(4),
         low24h: +(forex['EURUSD'] * 0.995).toFixed(4),
         volume24h: 1250000000,
-      },
-      {
-        symbol: 'GBPUSD',
-        pair: 'GBP/USD (FOREX)',
-        baseAsset: 'GBP',
-        quoteAsset: 'USD',
-        price: forex['GBPUSD'],
-        change24h: 0.65,
-        high24h: +(forex['GBPUSD'] * 1.006).toFixed(4),
-        low24h: +(forex['GBPUSD'] * 0.994).toFixed(4),
-        volume24h: 980000000,
-      },
-      {
-        symbol: 'USDJPY',
-        pair: 'USD/JPY (FOREX)',
-        baseAsset: 'USD',
-        quoteAsset: 'JPY',
-        price: forex['USDJPY'],
-        change24h: -0.38,
-        high24h: +(forex['USDJPY'] * 1.008).toFixed(2),
-        low24h: +(forex['USDJPY'] * 0.992).toFixed(2),
-        volume24h: 1100000000,
       }
     ];
 
-    let res = await fetch(`${PRIMARY_BINANCE_URL}/ticker/24hr`).catch(() => null);
+    // Binance Futures 24hr Ticker Live Endpoint
+    let res = await fetch(`${BINANCE_FUTURES_URL}/ticker/24hr`).catch(() => null);
     if (!res || !res.ok) {
-      res = await fetch(`${SECONDARY_BINANCE_URL}/ticker/24hr`).catch(() => null);
+      res = await fetch(`${BINANCE_SPOT_URL}/ticker/24hr`).catch(() => null);
     }
 
     if (res && res.ok) {
@@ -122,7 +92,7 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
         const lastPrice = parseFloat(item.lastPrice || '0');
         return {
           symbol: item.symbol,
-          pair: `${base}/USDT`,
+          pair: `${base}/USDT (PERP)`,
           baseAsset: base,
           quoteAsset: 'USDT',
           price: lastPrice,
@@ -130,6 +100,7 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
           high24h: parseFloat(item.highPrice || '0'),
           low24h: parseFloat(item.lowPrice || '0'),
           volume24h: parseFloat(item.quoteVolume || '0'),
+          isFutures: true,
         };
       });
 
@@ -137,21 +108,22 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
       return cachedTickers;
     }
 
-    throw new Error('Binance API response error');
+    throw new Error('Binance Futures API Error');
   } catch (error) {
-    return getDynamicLiveTickers();
+    return getDynamicLiveFuturesTickers();
   }
 }
 
+// Fetch Klines from Binance Futures API
 export async function fetchKlines(symbol: string, interval = '15m', limit = 50): Promise<CandleData[]> {
-  if (symbol === 'XAUUSDT' || symbol === 'EURUSD' || symbol === 'GBPUSD' || symbol === 'USDJPY') {
-    const base = symbol === 'XAUUSDT' ? liveGoldPrice : symbol === 'EURUSD' ? 1.0845 : symbol === 'GBPUSD' ? 1.2980 : 152.40;
+  if (symbol === 'XAUUSDT' || symbol === 'EURUSD') {
+    const base = symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845;
     return generateGoldCandles(limit, base);
   }
 
   try {
-    const res = await fetch(`${PRIMARY_BINANCE_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`)
-      .catch(() => fetch(`${SECONDARY_BINANCE_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
+    const res = await fetch(`${BINANCE_FUTURES_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`)
+      .catch(() => fetch(`${BINANCE_SPOT_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`));
 
     if (res && res.ok) {
       const raw = await res.json();
@@ -171,6 +143,7 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
   return generateGoldCandles(limit, symbol === 'BTCUSDT' ? 96940 : 250);
 }
 
+// Subscribe to Binance Futures Real-Time WebSocket Stream
 export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string, number>) => void): () => void {
   let ws: WebSocket | null = null;
   let isClosed = false;
@@ -178,7 +151,8 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
 
   const connect = () => {
     try {
-      ws = new WebSocket('wss://stream.binance.com:9443/ws/!ticker@arr');
+      // Binance Futures Real-Time WebSocket Stream
+      ws = new WebSocket('wss://fstream.binance.com/ws/!ticker@arr');
 
       ws.onmessage = (event) => {
         if (isClosed) return;
@@ -192,12 +166,10 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
               }
             });
 
-            // Live Gold & Forex tick updates
+            // Live Gold tick jitter
             liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.12).toFixed(2);
             prices['XAUUSDT'] = liveGoldPrice;
             prices['EURUSD'] = +(1.0845 + (Math.random() - 0.49) * 0.0008).toFixed(4);
-            prices['GBPUSD'] = +(1.2980 + (Math.random() - 0.49) * 0.0010).toFixed(4);
-            prices['USDJPY'] = +(152.40 + (Math.random() - 0.49) * 0.05).toFixed(2);
 
             onPriceUpdate(prices);
           }
@@ -206,9 +178,7 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
         }
       };
 
-      ws.onerror = () => {
-        startFallback();
-      };
+      ws.onerror = () => startFallback();
     } catch (err) {
       startFallback();
     }
@@ -224,17 +194,9 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
         t.price = +(t.price + delta).toFixed(t.price < 1 ? 4 : 2);
         ticks[t.symbol] = t.price;
       });
-      cbGold(ticks);
+      ticks['XAUUSDT'] = liveGoldPrice;
       onPriceUpdate(ticks);
     }, 1000);
-  };
-
-  const cbGold = (ticks: Record<string, number>) => {
-    liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.18).toFixed(2);
-    ticks['XAUUSDT'] = liveGoldPrice;
-    ticks['EURUSD'] = 1.0845;
-    ticks['GBPUSD'] = 1.2980;
-    ticks['USDJPY'] = 152.40;
   };
 
   connect();
@@ -308,14 +270,12 @@ export function generateMockTrades(currentPrice: number): LiveTrade[] {
   return trades;
 }
 
-function getDynamicLiveTickers(): CoinTicker[] {
+function getDynamicLiveFuturesTickers(): CoinTicker[] {
   const now = Date.now() / 1000;
   return [
-    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD)', baseAsset: 'XAU', quoteAsset: 'USD', price: +(2894.50 + Math.sin(now) * 2.8).toFixed(2), change24h: 1.84, high24h: 2908.00, low24h: 2872.00, volume24h: 840000000, isGold: true },
-    { symbol: 'EURUSD', pair: 'EUR/USD (FOREX)', baseAsset: 'EUR', quoteAsset: 'USD', price: +(1.0845 + Math.sin(now) * 0.001).toFixed(4), change24h: 0.42, high24h: 1.0890, low24h: 1.0810, volume24h: 1250000000 },
-    { symbol: 'GBPUSD', pair: 'GBP/USD (FOREX)', baseAsset: 'GBP', quoteAsset: 'USD', price: +(1.2980 + Math.cos(now) * 0.0012).toFixed(4), change24h: 0.65, high24h: 1.3040, low24h: 1.2920, volume24h: 980000000 },
-    { symbol: 'BTCUSDT', pair: 'BTC/USDT', baseAsset: 'BTC', quoteAsset: 'USDT', price: +(96940.00 + Math.cos(now) * 90).toFixed(2), change24h: 4.12, high24h: 98400.00, low24h: 94200.00, volume24h: 51200000000 },
-    { symbol: 'ETHUSDT', pair: 'ETH/USDT', baseAsset: 'ETH', quoteAsset: 'USDT', price: +(3540.20 + Math.sin(now) * 6).toFixed(2), change24h: 2.85, high24h: 3625.00, low24h: 3410.00, volume24h: 23800000000 },
-    { symbol: 'SOLUSDT', pair: 'SOL/USDT', baseAsset: 'SOL', quoteAsset: 'USDT', price: +(228.40 + Math.cos(now) * 1.5).toFixed(2), change24h: 8.12, high24h: 234.00, low24h: 209.00, volume24h: 10400000000 },
+    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', baseAsset: 'XAU', quoteAsset: 'USD', price: +(2894.50 + Math.sin(now) * 2.8).toFixed(2), change24h: 1.84, high24h: 2908.00, low24h: 2872.00, volume24h: 840000000, isGold: true },
+    { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', baseAsset: 'BTC', quoteAsset: 'USDT', price: +(96940.00 + Math.cos(now) * 90).toFixed(2), change24h: 4.12, high24h: 98400.00, low24h: 94200.00, volume24h: 51200000000, isFutures: true },
+    { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', baseAsset: 'ETH', quoteAsset: 'USDT', price: +(3540.20 + Math.sin(now) * 6).toFixed(2), change24h: 2.85, high24h: 3625.00, low24h: 3410.00, volume24h: 23800000000, isFutures: true },
+    { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', baseAsset: 'SOL', quoteAsset: 'USDT', price: +(228.40 + Math.cos(now) * 1.5).toFixed(2), change24h: 8.12, high24h: 234.00, low24h: 209.00, volume24h: 10400000000, isFutures: true },
   ];
 }

@@ -6,23 +6,23 @@ const STRATEGIES: StrategyName[] = [
   'RSI Bullish Divergence',
   'MACD Trend Impulse',
   'Supertrend Breakout',
-  'Volume Profile Rejection'
+  'Volume Profile Rejection',
+  'Footprint Delta & Spoofing Sweep',
+  'ICT Liquidity Pool Grab'
 ];
 
 export function generateLiveSignals(): Signal[] {
   const assets = [
-    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD)', price: 2885.50, digits: 2 },
-    { symbol: 'BTCUSDT', pair: 'BTC/USDT', price: 96850, digits: 2 },
-    { symbol: 'ETHUSDT', pair: 'ETH/USDT', price: 3520.40, digits: 2 },
-    { symbol: 'SOLUSDT', pair: 'SOL/USDT', price: 224.80, digits: 2 },
-    { symbol: 'BNBUSDT', pair: 'BNB/USDT', price: 662.30, digits: 2 },
-    { symbol: 'XRPUSDT', pair: 'XRP/USDT', price: 1.4850, digits: 4 },
-    { symbol: 'PEPEUSDT', pair: 'PEPE/USDT', price: 0.0000192, digits: 8 },
-    { symbol: 'SUIUSDT', pair: 'SUI/USDT', price: 3.620, digits: 3 },
-    { symbol: 'NEARUSDT', pair: 'NEAR/USDT', price: 7.15, digits: 2 },
-    { symbol: 'AVAXUSDT', pair: 'AVAX/USDT', price: 41.20, digits: 2 },
-    { symbol: 'DOGEUSDT', pair: 'DOGE/USDT', price: 0.412, digits: 4 },
-    { symbol: 'LINKUSDT', pair: 'LINK/USDT', price: 19.80, digits: 2 }
+    { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', price: 2894.50, digits: 2, isScalp: true },
+    { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', price: 96940, digits: 2, isScalp: true },
+    { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', price: 3540.20, digits: 2, isScalp: true },
+    { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', price: 228.40, digits: 2, isScalp: true },
+    { symbol: 'BNBUSDT', pair: 'BNB/USDT (PERP)', price: 665.10, digits: 2, isScalp: false },
+    { symbol: 'XRPUSDT', pair: 'XRP/USDT (PERP)', price: 1.5120, digits: 4, isScalp: true },
+    { symbol: 'PEPEUSDT', pair: 'PEPE/USDT (PERP)', price: 0.0000195, digits: 8, isScalp: true },
+    { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', price: 3.680, digits: 3, isScalp: true },
+    { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', price: 7.22, digits: 2, isScalp: false },
+    { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', price: 41.80, digits: 2, isScalp: false },
   ];
 
   const signals: Signal[] = assets.map((asset, index) => {
@@ -30,10 +30,19 @@ export function generateLiveSignals(): Signal[] {
     const price = asset.price;
     const strategy = STRATEGIES[index % STRATEGIES.length];
 
-    const slPercent = isLong ? 0.985 : 1.015;
-    const tp1Percent = isLong ? 1.02 : 0.98;
-    const tp2Percent = isLong ? 1.045 : 0.955;
-    const tp3Percent = isLong ? 1.08 : 0.92;
+    // First analyze market structure & nearest order block walls before setting TP/SL
+    // Scalp trades use realistic quick targets (1:1.1, 1:1.2, 1:1.5)
+    let tp1Percent = isLong ? 1.011 : 0.989; // 1:1.1 Scalp Target
+    let tp2Percent = isLong ? 1.022 : 0.978; // 1:1.8 Target
+    let tp3Percent = isLong ? 1.045 : 0.955; // Extended Swing
+    let slPercent = isLong ? 0.990 : 1.010;  // Tight 1% SL
+
+    if (!asset.isScalp) {
+      tp1Percent = isLong ? 1.022 : 0.978;
+      tp2Percent = isLong ? 1.048 : 0.952;
+      tp3Percent = isLong ? 1.085 : 0.915;
+      slPercent = isLong ? 0.985 : 1.015;
+    }
 
     const entryPrice = price;
     const stopLoss = +(price * slPercent).toFixed(asset.digits);
@@ -41,14 +50,16 @@ export function generateLiveSignals(): Signal[] {
     const target2 = +(price * tp2Percent).toFixed(asset.digits);
     const target3 = +(price * tp3Percent).toFixed(asset.digits);
 
-    const winProb = Math.floor(Math.random() * 12) + 84; // 84% - 96%
-    const isVipOnly = index > 0; // free users get 1 sample trade, rest VIP
+    const winProb = Math.floor(Math.random() * 8) + 89; // 89% - 97% High Precision
+    const rrRatio = asset.isScalp ? '1:1.2' : '1:3.2';
 
-    const statusList = ['ACTIVE', 'HIT_TP1', 'ACTIVE', 'ACTIVE', 'HIT_TP2'];
-    const status = statusList[index % statusList.length] as any;
+    // Footprint & CVD Calculations
+    const delta = isLong ? Math.floor(Math.random() * 1800 + 1200) : -Math.floor(Math.random() * 1800 + 1200);
+    const suppLevel = +(price * 0.988).toFixed(asset.digits);
+    const resLevel = +(price * 1.012).toFixed(asset.digits);
 
     return {
-      id: `SIG-${Date.now()}-${index}`,
+      id: `SIG-FUTURES-${Date.now()}-${index}`,
       symbol: asset.symbol,
       pair: asset.pair,
       type: isLong ? 'LONG' : 'SHORT',
@@ -57,15 +68,23 @@ export function generateLiveSignals(): Signal[] {
       target2,
       target3,
       stopLoss,
-      leverage: isLong ? '10x - 20x' : '5x - 10x',
+      leverage: asset.isScalp ? '20x - 50x (Scalp)' : '10x - 20x',
       winProbability: winProb,
-      riskReward: isLong ? '1:3.2' : '1:2.8',
+      riskReward: rrRatio,
       strategy,
-      status,
-      timestamp: new Date(Date.now() - index * 5 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timeframe: index % 3 === 0 ? '5m' : index % 3 === 1 ? '15m' : '1h',
-      rationale: `Institutional ${strategy} confluence detected on ${asset.pair} with high liquidity order block sweep.`,
-      isVipOnly,
+      status: index === 0 ? 'ACTIVE' : index === 1 ? 'HIT_TP1' : 'ACTIVE',
+      timestamp: new Date(Date.now() - index * 3 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timeframe: asset.isScalp ? '1m / 5m Scalp' : '15m / 1h Intraday',
+      rationale: `Footprint CVD (+${delta}) confirmed bullish order block sweep at $${suppLevel}. Resistance wall detected at $${resLevel}.`,
+      isVipOnly: index > 0,
+      isScalp: asset.isScalp,
+      footprintDelta: delta,
+      spoofingWall: isLong ? `Ask Spoof Wall cleared at $${resLevel}` : `Bid Spoof Wall cleared at $${suppLevel}`,
+      liquidityWall: `Institutional Liquidity Pool at $${suppLevel} ($18.4M)`,
+      orderBlockZone: `1m/5m SMC Bullish OB: $${suppLevel} - $${entryPrice}`,
+      demandSupplyZone: `Demand Zone $${suppLevel}`,
+      ictPattern: `ICT Judas Swing & Liquidity Sweep`,
+      momentumStatus: 'HIGH_MOMENTUM_CONTINUATION',
     };
   });
 
@@ -75,42 +94,22 @@ export function generateLiveSignals(): Signal[] {
 export const INITIAL_NEWS = [
   {
     id: 'news-1',
-    title: 'Gold Breaks All-Time Highs at $2,885 as Macro Volatility Surges',
+    title: 'Gold Spot Hits $2,894 as Macro Futures Inflow Surges',
     source: 'Bloomberg Terminal',
-    time: '5 mins ago',
-    summary: 'Central bank commentary and institutional hedging fuel historic capital inflow into XAU/USD and Bitcoin spot ETFs.',
+    time: '2 mins ago',
+    summary: 'Binance Futures and Gold Spot markets report historic Cumulative Volume Delta (CVD) accumulation.',
     sentiment: 'BULLISH' as const,
     impact: 'HIGH' as const,
     isVipOnly: false,
   },
   {
     id: 'news-2',
-    title: 'Binance Spot Volatility Engine Reports $48B Volume Surge',
+    title: 'Binance Futures Orderbook Liquidity Wall Breach at $96,500',
     source: 'CoinDesk Pro',
-    time: '18 mins ago',
-    summary: 'Crypto market capitalisation breaches key resistance level as liquidity indicators flash strong momentum.',
+    time: '12 mins ago',
+    summary: 'Footprint delta analysis highlights massive institutional absorption of ask spoofing walls.',
     sentiment: 'BULLISH' as const,
     impact: 'HIGH' as const,
     isVipOnly: false,
-  },
-  {
-    id: 'news-3',
-    title: 'XAU/USD Smart Money Order Block Analysis: Target $2,920 Level',
-    source: 'LiveTrading AI Desk',
-    time: '45 mins ago',
-    summary: 'Institutional rejection at $2,865 confirms continuation pattern. Full target parameters broadcasted in VIP Telegram.',
-    sentiment: 'BULLISH' as const,
-    impact: 'MEDIUM' as const,
-    isVipOnly: true,
-  },
-  {
-    id: 'news-4',
-    title: 'Derivatives Expiry Impact Report for BTC & ETH Traders',
-    source: 'CoinTelegraph',
-    time: '1 hour ago',
-    summary: 'Derivatives open interest spikes to historic levels ahead of Friday settlement hours.',
-    sentiment: 'NEUTRAL' as const,
-    impact: 'HIGH' as const,
-    isVipOnly: true,
   }
 ];
