@@ -1,0 +1,73 @@
+import React, { useState } from 'react';
+import { Navbar } from '@/components/layout/Navbar';
+import { TickerTape } from '@/components/layout/TickerTape';
+import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
+import { INITIAL_NEWS } from '@/services/signalEngine';
+import { Newspaper, Flame, ExternalLink, Lock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
+
+const NewsPage: React.FC = () => {
+  const { user, instagramUrl } = useAuth();
+  const [news] = useState(INITIAL_NEWS);
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <TickerTape />
+      <Navbar />
+
+      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+        <UpgradeBanner />
+
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2">
+            <Newspaper className="h-7 w-7 text-rose-400" />
+            Institutional Intelligence & Gold News
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">Real-time market sentiment and global central bank macro updates.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {news.map(item => {
+            const isLocked = item.isVipOnly && user?.tier === 'free';
+            return (
+              <div key={item.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span className="font-bold text-slate-200">{item.source}</span>
+                    <span className="flex items-center gap-1"><Flame className="h-3 w-3 text-amber-400" /> {item.time}</span>
+                  </div>
+
+                  <h3 className="font-extrabold text-lg text-slate-100 leading-snug">{item.title}</h3>
+                  <p className="text-sm text-slate-300 mt-2 leading-relaxed">{item.summary}</p>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
+                  <Badge className={item.sentiment === 'BULLISH' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-slate-800 text-slate-300'}>
+                    {item.sentiment}
+                  </Badge>
+
+                  {isLocked ? (
+                    <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
+                      <Button size="sm" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs gap-1">
+                        <Lock className="h-3 w-3" /> VIP Analysis Locked
+                      </Button>
+                    </a>
+                  ) : (
+                    <Button size="sm" variant="ghost" className="text-xs text-indigo-400 hover:text-indigo-300 gap-1">
+                      Full Intelligence Report <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+      </main>
+    </div>
+  );
+};
+
+export default NewsPage;
