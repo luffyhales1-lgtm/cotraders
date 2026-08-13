@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { ProChart } from '@/components/charts/ProChart';
+import { LiquidityHeatmap } from '@/components/trading/LiquidityHeatmap';
+import { TechnicalGauge } from '@/components/trading/TechnicalGauge';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { CoinTicker } from '@/types/trading';
 import { Search, LineChart, Sparkles } from 'lucide-react';
@@ -28,7 +30,7 @@ const ProChartsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
       <TickerTape />
       <Navbar />
 
@@ -72,12 +74,27 @@ const ProChartsPage: React.FC = () => {
         </div>
 
         {selectedCoin && (
-          <ProChart
-            symbol={selectedCoin.symbol}
-            pair={selectedCoin.pair}
-            currentPrice={selectedCoin.price}
-            change24h={selectedCoin.change24h}
-          />
+          <div className="space-y-8">
+            <ProChart
+              symbol={selectedCoin.symbol}
+              pair={selectedCoin.pair}
+              currentPrice={selectedCoin.price}
+              change24h={selectedCoin.change24h}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <TechnicalGauge 
+                pair={selectedCoin.pair} 
+                price={selectedCoin.price} 
+                change24h={selectedCoin.change24h} 
+              />
+              <LiquidityHeatmap 
+                symbol={selectedCoin.symbol} 
+                pair={selectedCoin.pair} 
+                currentPrice={selectedCoin.price} 
+              />
+            </div>
+          </div>
         )}
 
       </main>

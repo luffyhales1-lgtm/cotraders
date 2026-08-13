@@ -3,6 +3,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { SignalCard } from '@/components/signals/SignalCard';
+import { CustomScannerSandbox } from '@/components/signals/CustomScannerSandbox';
 import { generateLiveSignals } from '@/services/signalEngine';
 import { Signal } from '@/types/trading';
 import { Sparkles, RefreshCw, Filter, ShieldCheck, Zap } from 'lucide-react';
@@ -40,7 +41,7 @@ const AiSignals: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
       <TickerTape />
       <Navbar />
 
@@ -87,6 +88,11 @@ const AiSignals: React.FC = () => {
               Scan Now
             </Button>
           </div>
+        </div>
+
+        {/* On-Demand AI Strategy Sandbox */}
+        <div className="mb-8">
+          <CustomScannerSandbox />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
