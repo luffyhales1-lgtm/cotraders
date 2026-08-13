@@ -12,7 +12,8 @@ import {
   LogOut, 
   LogIn,
   Instagram,
-  Sparkles
+  Sparkles,
+  Award
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -84,6 +85,17 @@ export const Navbar: React.FC = () => {
             >
               <Scan className="h-4 w-4 text-amber-400" />
               1000+ Scanner
+            </Button>
+          </Link>
+
+          <Link to="/analytics">
+            <Button 
+              variant={isActive('/analytics') ? 'secondary' : 'ghost'} 
+              size="sm"
+              className={`gap-2 text-xs font-semibold ${isActive('/analytics') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+            >
+              <Award className="h-4 w-4 text-purple-400" />
+              Analytics
             </Button>
           </Link>
 
