@@ -1,4 +1,3 @@
-select coin -> scan -> redirect live trade signal to Telegram.">
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { 
