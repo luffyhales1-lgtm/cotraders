@@ -14,19 +14,20 @@ import {
   Instagram,
   Sparkles,
   Award,
-  DollarSign
+  Lock,
+  Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 export const Navbar: React.FC = () => {
-  const { user, logout, instagramUrl } = useAuth();
+  const { user, logout, instagramUrl, isVipMember } = useAuth();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3">
+    <header className="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-4 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Brand Logo */}
@@ -60,10 +61,11 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/signals') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/signals') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-semibold ${isActive('/signals') ? 'bg-slate-800 text-cyan-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Sparkles className="h-4 w-4 text-cyan-400" />
               AI Signals
+              {!isVipMember && <Lock className="h-3 w-3 text-amber-400 ml-0.5" />}
             </Button>
           </Link>
 
@@ -71,10 +73,11 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/charts') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/charts') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-semibold ${isActive('/charts') ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <LineChart className="h-4 w-4 text-indigo-400" />
               Pro Charts
+              {!isVipMember && <Lock className="h-3 w-3 text-amber-400 ml-0.5" />}
             </Button>
           </Link>
 
@@ -82,10 +85,11 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/scanner') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/scanner') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-semibold ${isActive('/scanner') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Scan className="h-4 w-4 text-amber-400" />
               1000+ Scanner
+              {!isVipMember && <Lock className="h-3 w-3 text-amber-400 ml-0.5" />}
             </Button>
           </Link>
 
@@ -96,7 +100,7 @@ export const Navbar: React.FC = () => {
               className={`gap-2 text-xs font-semibold ${isActive('/pricing') ? 'bg-slate-800 text-amber-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Crown className="h-4 w-4 text-amber-400" />
-              VIP Pricing
+              VIP Plans
             </Button>
           </Link>
 
@@ -104,21 +108,10 @@ export const Navbar: React.FC = () => {
             <Button 
               variant={isActive('/analytics') ? 'secondary' : 'ghost'} 
               size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/analytics') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
+              className={`gap-1.5 text-xs font-semibold ${isActive('/analytics') ? 'bg-slate-800 text-purple-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
             >
               <Award className="h-4 w-4 text-purple-400" />
               Analytics
-            </Button>
-          </Link>
-
-          <Link to="/news">
-            <Button 
-              variant={isActive('/news') ? 'secondary' : 'ghost'} 
-              size="sm"
-              className={`gap-2 text-xs font-semibold ${isActive('/news') ? 'bg-slate-800 text-emerald-400 border border-slate-700' : 'text-slate-300 hover:text-white hover:bg-slate-900'}`}
-            >
-              <Newspaper className="h-4 w-4 text-rose-400" />
-              Live News
             </Button>
           </Link>
 
@@ -136,14 +129,13 @@ export const Navbar: React.FC = () => {
           )}
         </nav>
 
-        {/* Right CTA / Auth Status */}
+        {/* Right Action */}
         <div className="flex items-center gap-3">
           
-          {/* Direct Buy via Instagram */}
           <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="hidden sm:flex gap-1.5 bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white font-bold text-xs hover:opacity-95 shadow-md shadow-purple-900/30">
-              <Instagram className="h-4 w-4" />
-              Buy VIP Access
+            <Button size="sm" className="hidden sm:flex gap-1.5 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-black text-xs hover:opacity-95 shadow-md shadow-amber-500/20">
+              <Crown className="h-4 w-4" />
+              Subscribe VIP Access
             </Button>
           </a>
 
@@ -171,7 +163,7 @@ export const Navbar: React.FC = () => {
             <Link to="/login">
               <Button size="sm" variant="outline" className="gap-1.5 text-xs font-bold border-slate-700 text-slate-200 hover:bg-slate-800">
                 <LogIn className="h-4 w-4 text-emerald-400" />
-                Login
+                Log In
               </Button>
             </Link>
           )}

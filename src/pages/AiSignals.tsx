@@ -2,16 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
+import { VIPGateModal } from '@/components/subscription/VIPGateModal';
 import { SignalCard } from '@/components/signals/SignalCard';
 import { CustomScannerSandbox } from '@/components/signals/CustomScannerSandbox';
 import { generateLiveSignals } from '@/services/signalEngine';
 import { Signal } from '@/types/trading';
-import { Sparkles, RefreshCw, Filter, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, RefreshCw, Filter, ShieldCheck, Zap, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 const AiSignals: React.FC = () => {
+  const { isVipMember, dispatchTelegramSignal } = useAuth();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,7 +32,7 @@ const AiSignals: React.FC = () => {
     loadSignals();
     const interval = setInterval(() => {
       setSignals(generateLiveSignals());
-    }, 5 * 60 * 1000); // Every 5 min
+    }, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -39,6 +42,24 @@ const AiSignals: React.FC = () => {
     if (filterType === 'GOLD') return s.symbol === 'XAUUSDT';
     return true;
   });
+
+  const handleBroadcastTelegram = (sig: Signal) => {
+    dispatchTelegramSignal({
+      pair: sig.pair,
+      type: sig.type,
+      strategy: sig.strategy,
+      timeframe: sig.timeframe,
+      entryPrice: sig.entryPrice,
+      target1: sig.target1,
+      target2: sig.target2,
+      target3: sig.target3,
+      stopLoss: sig.stopLoss,
+      leverage: sig.leverage,
+      winProbability: sig.winProbability,
+      riskReward: sig.riskReward,
+      rationale: sig.rationale,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
@@ -90,16 +111,46 @@ const AiSignals: React.FC = () => {
           </div>
         </div>
 
-        {/* On-Demand AI Strategy Sandbox */}
-        <div className="mb-8">
-          <CustomScannerSandbox />
-        </div>
+        {!isVipMember ? (
+          <div>
+            <VIPGateModal 
+              title="Full AI Signal Engine Restricted" 
+              description="Free users can only view sample setups. Subscribe to VIP to view all live 5-minute signals and receive automated Telegram alerts."
+            />
+            
+            {/* Show 1 sample signal */}
+            <div className="mt-8">
+              <h3 className="text-lg font-bold text-slate-300 mb-4">Sample Signal Preview</h3>
+              <div className="max-w-md">
+                {signals.slice(0, 1).map(sig => (
+                  <SignalCard key={sig.id} signal={{ ...sig, isVipOnly: false }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <CustomScannerSandbox />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map(signal => (
-            <SignalCard key={signal.id} signal={signal} />
-          ))}
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map(signal => (
+                <div key={signal.id} className="relative group">
+                  <SignalCard signal={signal} />
+                  <div className="mt-2 text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleBroadcastTelegram(signal)}
+                      className="border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 text-[11px] font-bold h-7 gap-1"
+                    >
+                      <Send className="h-3 w-3" /> Dispatch to Telegram
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </main>
     </div>

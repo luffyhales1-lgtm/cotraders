@@ -4,13 +4,16 @@ import { TickerTape } from '@/components/layout/TickerTape';
 import { ProChart } from '@/components/charts/ProChart';
 import { LiquidityHeatmap } from '@/components/trading/LiquidityHeatmap';
 import { TechnicalGauge } from '@/components/trading/TechnicalGauge';
+import { VIPGateModal } from '@/components/subscription/VIPGateModal';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { CoinTicker } from '@/types/trading';
 import { Search, LineChart, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/context/AuthContext';
 
 const ProChartsPage: React.FC = () => {
+  const { isVipMember } = useAuth();
   const [tickers, setTickers] = useState<CoinTicker[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<CoinTicker | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -47,53 +50,63 @@ const ProChartsPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-            <Input
-              placeholder="Search symbol (e.g. BTC, XAU, SOL)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-slate-900 border-slate-800 text-xs font-mono text-slate-100 focus:border-indigo-500"
-            />
-          </div>
-        </div>
-
-        {/* Pair Quick Selector Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
-          {searchFiltered.slice(0, 12).map((coin) => (
-            <Button
-              key={coin.symbol}
-              onClick={() => setSelectedCoin(coin)}
-              variant={selectedCoin?.symbol === coin.symbol ? 'secondary' : 'outline'}
-              size="sm"
-              className={`shrink-0 font-mono text-xs ${selectedCoin?.symbol === coin.symbol ? 'bg-indigo-600 text-white border-indigo-500 font-bold' : 'border-slate-800 text-slate-300 hover:bg-slate-900'}`}
-            >
-              {coin.pair}
-            </Button>
-          ))}
-        </div>
-
-        {selectedCoin && (
-          <div className="space-y-8">
-            <ProChart
-              symbol={selectedCoin.symbol}
-              pair={selectedCoin.pair}
-              currentPrice={selectedCoin.price}
-              change24h={selectedCoin.change24h}
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TechnicalGauge 
-                pair={selectedCoin.pair} 
-                price={selectedCoin.price} 
-                change24h={selectedCoin.change24h} 
-              />
-              <LiquidityHeatmap 
-                symbol={selectedCoin.symbol} 
-                pair={selectedCoin.pair} 
-                currentPrice={selectedCoin.price} 
+          {isVipMember && (
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <Input
+                placeholder="Search symbol (e.g. BTC, XAU, SOL)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-slate-900 border-slate-800 text-xs font-mono text-slate-100 focus:border-indigo-500"
               />
             </div>
+          )}
+        </div>
+
+        {!isVipMember ? (
+          <VIPGateModal 
+            title="Pro Dark Terminal Locked" 
+            description="Upgrade to VIP Subscription to access full candlestick charts, live orderbooks, SMC liquidity heatmaps, and technical summary gauges."
+          />
+        ) : (
+          <div>
+            <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 scrollbar-none">
+              {searchFiltered.slice(0, 12).map((coin) => (
+                <Button
+                  key={coin.symbol}
+                  onClick={() => setSelectedCoin(coin)}
+                  variant={selectedCoin?.symbol === coin.symbol ? 'secondary' : 'outline'}
+                  size="sm"
+                  className={`shrink-0 font-mono text-xs ${selectedCoin?.symbol === coin.symbol ? 'bg-indigo-600 text-white border-indigo-500 font-bold' : 'border-slate-800 text-slate-300 hover:bg-slate-900'}`}
+                >
+                  {coin.pair}
+                </Button>
+              ))}
+            </div>
+
+            {selectedCoin && (
+              <div className="space-y-8">
+                <ProChart
+                  symbol={selectedCoin.symbol}
+                  pair={selectedCoin.pair}
+                  currentPrice={selectedCoin.price}
+                  change24h={selectedCoin.change24h}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <TechnicalGauge 
+                    pair={selectedCoin.pair} 
+                    price={selectedCoin.price} 
+                    change24h={selectedCoin.change24h} 
+                  />
+                  <LiquidityHeatmap 
+                    symbol={selectedCoin.symbol} 
+                    pair={selectedCoin.pair} 
+                    currentPrice={selectedCoin.price} 
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

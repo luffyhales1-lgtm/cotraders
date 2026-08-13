@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, SubscriptionTier } from '@/types/trading';
+import { sendTelegramSignalNotification, TelegramSignalPayload } from '@/services/telegramService';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -11,6 +12,11 @@ interface AuthContextType {
   instagramUrl: string;
   vipMonthlyPrice: number;
   vipYearlyPrice: number;
+  telegramBotToken: string;
+  telegramChatId: string;
+  updateTelegramConfig: (token: string, chatId: string) => void;
+  dispatchTelegramSignal: (signal: TelegramSignalPayload) => Promise<boolean>;
+  isVipMember: boolean;
 }
 
 const ADMIN_EMAIL = 'luffyhales1@gmail.com';
@@ -36,15 +42,7 @@ const INITIAL_USERS: UserProfile[] = [
     tier: 'vip_monthly',
     isAdmin: false,
     subscriptionStart: new Date().toISOString(),
-    subscriptionEnd: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // Expiring in 3 days
-    isExpired: false,
-  },
-  {
-    email: 'guest_trader@gmail.com',
-    name: 'Free Member',
-    tier: 'free',
-    isAdmin: false,
-    subscriptionStart: new Date().toISOString(),
+    subscriptionEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     isExpired: false,
   }
 ];
@@ -58,16 +56,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         return JSON.parse(saved);
       } catch (e) {
-        return INITIAL_USERS[0];
+        return null;
       }
     }
-    // Default to admin user for immediate preview access
-    return INITIAL_USERS[0];
+    return null; // Public guest by default until logged in
   });
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>(() => {
     const saved = localStorage.getItem('livetrading_all_users');
     return saved ? JSON.parse(saved) : INITIAL_USERS;
+  });
+
+  const [telegramBotToken, setTelegramBotToken] = useState<string>(() => {
+    return localStorage.getItem('livetrading_tg_token') || '';
+  });
+
+  const [telegramChatId, setTelegramChatId] = useState<string>(() => {
+    return localStorage.getItem('livetrading_tg_chatid') || '';
   });
 
   useEffect(() => {
@@ -82,7 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('livetrading_all_users', JSON.stringify(allUsers));
   }, [allUsers]);
 
-  // Check subscription expiry timer
+  // Subscription expiry check
   useEffect(() => {
     if (!user || user.tier === 'free') return;
 
@@ -92,15 +97,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const daysLeft = (endTime - now) / (1000 * 60 * 60 * 24);
 
       if (now >= endTime) {
-        toast.error('Your VIP Subscription has expired! Downgrading to Free Trial.');
+        toast.error('Your VIP Subscription has expired! Downgraded to Free access.');
         const updatedUser: UserProfile = { ...user, tier: 'free', isExpired: true };
         setUser(updatedUser);
       } else if (daysLeft <= 3 && !sessionStorage.getItem('notified_3days')) {
-        toast.warning(`⚠️ Reminder: Your VIP Subscription expires in ${Math.ceil(daysLeft)} days! Renewal alert sent to ${user.email}.`);
+        toast.warning(`⚠️ VIP Alert: Your access expires in ${Math.ceil(daysLeft)} days! Renew on Instagram to avoid interruption.`);
         sessionStorage.setItem('notified_3days', 'true');
       }
     }
   }, [user]);
+
+  const updateTelegramConfig = (token: string, chatId: string) => {
+    setTelegramBotToken(token);
+    setTelegramChatId(chatId);
+    localStorage.setItem('livetrading_tg_token', token);
+    localStorage.setItem('livetrading_tg_chatid', chatId);
+    toast.success('Telegram Bot Token and Chat ID updated successfully!');
+  };
+
+  const dispatchTelegramSignal = async (signal: TelegramSignalPayload): Promise<boolean> => {
+    if (!telegramBotToken || !telegramChatId) {
+      toast.error('Please configure Telegram Bot Token and Chat ID in Admin Panel first!');
+      return false;
+    }
+
+    toast.info(`Dispatching ${signal.pair} ${signal.type} signal to Telegram channel...`);
+    const res = await sendTelegramSignalNotification(telegramBotToken, telegramChatId, signal);
+    if (res.success) {
+      toast.success(res.message);
+      return true;
+    } else {
+      toast.error(res.message);
+      return false;
+    }
+  };
 
   const login = (email: string, pass: string): boolean => {
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
@@ -114,19 +144,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isExpired: false,
       };
       setUser(adminAcc);
-      toast.success('Welcome Master Admin! Access Granted to Full Platform & Admin Panel.');
+      toast.success('Master Admin Verified! Full Terminal & Management Unlocked.');
       return true;
     }
 
-    // Check existing users or create new free account
     const existing = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
     if (existing) {
       setUser(existing);
-      toast.success(`Logged in as ${existing.name}`);
+      toast.success(`Welcome back, ${existing.name}!`);
       return true;
     }
 
-    // Demo user registration
     const newUser: UserProfile = {
       email,
       name: email.split('@')[0],
@@ -138,13 +166,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setAllUsers(prev => [...prev, newUser]);
     setUser(newUser);
-    toast.success('Account Created! Standard Free Trial Access Granted.');
+    toast.success('Account Created! Welcome to LiveTrading AI.');
     return true;
   };
 
   const logout = () => {
     setUser(null);
-    toast.info('You have logged out.');
+    toast.info('Logged out successfully.');
   };
 
   const updateUserSubscription = (email: string, tier: SubscriptionTier, durationDays: number) => {
@@ -165,14 +193,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setAllUsers(updated);
 
-    // If current logged in user is updated
     if (user && user.email.toLowerCase() === email.toLowerCase()) {
       const selfUpdated = updated.find(u => u.email.toLowerCase() === email.toLowerCase());
       if (selfUpdated) setUser(selfUpdated);
     }
 
-    toast.success(`Subscription updated for ${email} to ${tier.toUpperCase()}`);
+    toast.success(`Subscription for ${email} set to ${tier.toUpperCase()}`);
   };
+
+  const isVipMember = !!(user && user.tier !== 'free');
 
   return (
     <AuthContext.Provider value={{
@@ -184,6 +213,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       instagramUrl: INSTAGRAM_URL,
       vipMonthlyPrice: VIP_MONTHLY_PRICE,
       vipYearlyPrice: VIP_YEARLY_PRICE,
+      telegramBotToken,
+      telegramChatId,
+      updateTelegramConfig,
+      dispatchTelegramSignal,
+      isVipMember,
     }}>
       {children}
     </AuthContext.Provider>
