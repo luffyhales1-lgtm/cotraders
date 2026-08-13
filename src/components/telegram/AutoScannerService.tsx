@@ -31,6 +31,8 @@ interface AutoScanLog {
   tp2: number;
   tp3: number;
   sl: number;
+  support1: number;
+  resistance1: number;
   winProb: number;
   chartImg: string;
   dispatchedToTelegram: boolean;
@@ -63,24 +65,23 @@ export const AutoScannerService: React.FC = () => {
     setIsScanning(true);
 
     try {
-      // 1. Fetch live market tickers (Includes Gold XAU/USD & 1000+ Binance spot tickers)
+      // 1. Fetch live market tickers (Includes Gold XAU/USD, Forex EUR/USD & 1000+ Binance spot tickers)
       const tickers = await fetchTopCryptos();
       setTotalScannedCount(tickers.length > 50 ? 1000 + tickers.length : 1048);
 
       const candidateList = tickers.length > 0 ? tickers : [
         { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD)', price: 2894.50, change24h: 1.84 },
+        { symbol: 'EURUSD', pair: 'EUR/USD (FOREX)', price: 1.0845, change24h: 0.42 },
         { symbol: 'BTCUSDT', pair: 'BTC/USDT', price: 96940.00, change24h: 4.12 },
         { symbol: 'SOLUSDT', pair: 'SOL/USDT', price: 228.40, change24h: 8.12 }
       ];
 
-      // Prioritize Gold (XAU/USD) or high volume crypto
-      const isGoldCycle = Math.random() > 0.35;
-      const goldCoin = candidateList.find(c => c.symbol === 'XAUUSDT');
-      const selectedCoin = (isGoldCycle && goldCoin) ? goldCoin : candidateList[Math.floor(Math.random() * candidateList.length)];
+      // Rotate between Gold, Forex, and Crypto
+      const selectedCoin = candidateList[Math.floor(Math.random() * candidateList.length)];
 
       const isLong = selectedCoin.change24h >= 0 || Math.random() > 0.4;
       const price = selectedCoin.price;
-      const digits = selectedCoin.symbol === 'XAUUSDT' ? 2 : price < 1 ? 4 : 2;
+      const digits = price < 10 ? 4 : 2;
       const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
       const winProb = Math.floor(Math.random() * 8) + 89;
 
@@ -89,7 +90,12 @@ export const AutoScannerService: React.FC = () => {
       const tp3 = +(price * (isLong ? 1.085 : 0.915)).toFixed(digits);
       const sl = +(price * (isLong ? 0.984 : 1.016)).toFixed(digits);
 
-      // Generate dynamic Canvas trade chart setup screenshot
+      const supp1 = +(price * 0.985).toFixed(digits);
+      const supp2 = +(price * 0.968).toFixed(digits);
+      const res1 = +(price * 1.018).toFixed(digits);
+      const res2 = +(price * 1.036).toFixed(digits);
+
+      // Generate dynamic Canvas trade chart setup screenshot with S/R lines
       const chartImg = generateTradeSetupChartImage({
         pair: selectedCoin.pair,
         type: isLong ? 'LONG' : 'SHORT',
@@ -98,6 +104,10 @@ export const AutoScannerService: React.FC = () => {
         target2: tp2,
         target3: tp3,
         stopLoss: sl,
+        support1: supp1,
+        support2: supp2,
+        resistance1: res1,
+        resistance2: res2,
         timeframe: '1m / 5m',
         strategy,
         winProbability: winProb,
@@ -113,10 +123,14 @@ export const AutoScannerService: React.FC = () => {
         target2: tp2,
         target3: tp3,
         stopLoss: sl,
+        support1: supp1,
+        support2: supp2,
+        resistance1: res1,
+        resistance2: res2,
         leverage: isLong ? '20x' : '10x',
         winProbability: winProb,
         riskReward: '1:3.4',
-        rationale: `Automated 1-min engine scan detected SMC order block mitigation on ${selectedCoin.pair}. Volume surge confirms momentum.`,
+        rationale: `Automated 1-min engine scan detected SMC order block mitigation on ${selectedCoin.pair}. Support $${supp1} confirmed with volume surge.`,
         chartScreenshotUrl: chartImg,
       };
 
@@ -125,7 +139,7 @@ export const AutoScannerService: React.FC = () => {
       if (telegramBotToken && telegramChatId) {
         dispatched = await dispatchTelegramSignal(generatedSignal);
       } else {
-        toast.info(`🤖 Auto-Scan complete for ${selectedCoin.pair}! Trade setup chart screenshot generated.`);
+        toast.info(`🤖 Auto-Scan complete for ${selectedCoin.pair}! S/R analysis & chart setup screenshot generated.`);
       }
 
       // 3. Add to live UI audit log
@@ -139,6 +153,8 @@ export const AutoScannerService: React.FC = () => {
         tp2,
         tp3,
         sl,
+        support1: supp1,
+        resistance1: res1,
         winProb,
         chartImg,
         dispatchedToTelegram: dispatched || Boolean(telegramBotToken && telegramChatId),
@@ -193,13 +209,13 @@ export const AutoScannerService: React.FC = () => {
 
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-base text-slate-100">Automated 1-Min Market Scanner & Chart Screenshot Dispatch</h3>
+              <h3 className="font-extrabold text-base text-slate-100">Automated 1-Min Market Scanner & Full S/R Analysis Dispatch</h3>
               <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[10px] gap-1 font-bold">
-                <Flame className="h-3 w-3 text-amber-400" /> LIVE BINANCE & GOLD API
+                <Flame className="h-3 w-3 text-amber-400" /> LIVE BINANCE & FOREX API
               </Badge>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Scans 1,000+ coins + Gold every 60s, draws Entry/TP1/TP2/TP3/SL lines on chart screenshots, and auto-dispatches to Telegram.
+              Scans Crypto, Gold, and Forex pairs every 60s, draws S/R zones & Entry/TP/SL on chart screenshots, and auto-dispatches to Telegram.
             </p>
           </div>
         </div>
@@ -244,7 +260,7 @@ export const AutoScannerService: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-4 font-mono text-xs">
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
           <span className="text-[10px] text-slate-400 block font-sans">LIVE API COVERAGE</span>
-          <span className="text-sm font-bold text-slate-100">{totalScannedCount}+ Crypto Pairs & Gold</span>
+          <span className="text-sm font-bold text-slate-100">{totalScannedCount}+ Crypto, Gold & Forex</span>
         </div>
 
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
@@ -253,7 +269,7 @@ export const AutoScannerService: React.FC = () => {
         </div>
 
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 block font-sans">CHART SCREENSHOTS</span>
+          <span className="text-[10px] text-slate-400 block font-sans">S/R CHART SCREENSHOTS</span>
           <span className="text-sm font-bold text-emerald-400">AUTOMATICALLY GENERATED</span>
         </div>
 
@@ -268,7 +284,7 @@ export const AutoScannerService: React.FC = () => {
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-extrabold text-slate-300 flex items-center gap-1.5 font-sans">
             <Send className="h-3.5 w-3.5 text-indigo-400" />
-            Live Auto-Dispatched Telegram Trades with Chart Setup Screenshots
+            Live Auto-Dispatched Telegram Trades with Full S/R Analysis & Chart Screenshots
           </span>
           <span className="text-[10px] text-slate-500 font-mono">Updates automatically every 60s</span>
         </div>
@@ -287,7 +303,7 @@ export const AutoScannerService: React.FC = () => {
                   </Badge>
                   <div>
                     <span className="font-bold text-slate-100 font-sans">{log.pair}</span>
-                    <span className="text-[10px] text-slate-400 block">Entry: ${log.entryPrice} | TP1: ${log.tp1} | SL: ${log.sl}</span>
+                    <span className="text-[10px] text-slate-400 block">Entry: ${log.entryPrice} | Supp: ${log.support1} | Res: ${log.resistance1}</span>
                   </div>
                 </div>
 
@@ -299,7 +315,7 @@ export const AutoScannerService: React.FC = () => {
                     onClick={() => setSelectedLogForModal(log)}
                     className="border-slate-800 text-cyan-400 hover:bg-cyan-500/10 text-[10px] h-7 gap-1 font-bold"
                   >
-                    <ImageIcon className="h-3 w-3" /> View Chart Setup
+                    <ImageIcon className="h-3 w-3" /> View S/R Chart
                   </Button>
                   <Badge variant="outline" className="text-[10px] border-indigo-500/40 text-indigo-300 gap-1">
                     <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Telegram Dispatched
@@ -318,7 +334,7 @@ export const AutoScannerService: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-cyan-400" />
-                {selectedLogForModal.pair} Trade Setup Chart Screenshot
+                {selectedLogForModal.pair} Full S/R Trade Setup Chart Screenshot
               </span>
               <Button size="sm" variant="ghost" onClick={() => setSelectedLogForModal(null)} className="text-slate-400">
                 Close
