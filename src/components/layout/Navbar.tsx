@@ -72,7 +72,7 @@ export const Navbar: React.FC = () => {
             >
               <Sparkles className="h-5 w-5 text-cyan-400" />
               AI Signals
-              {!isVipMember && <Lock className="h-3.5 w-3.5 text-amber-400 ml-0.5" />}
+              {!isVipMember && <span className="h-3.5 w-3.5 text-amber-400 ml-0.5">LOCK</span>}
             </Button>
           </Link>
 
@@ -84,7 +84,7 @@ export const Navbar: React.FC = () => {
             >
               <LineChart className="h-5 w-5 text-indigo-400" />
               Pro Charts
-              {!isVipMember && <Lock className="h-3.5 w-3.5 text-amber-400 ml-0.5" />}
+              {!isVipMember && <span className="h-3.5 w-3.5 text-amber-400 ml-0.5">LOCK</span>}
             </Button>
           </Link>
 
@@ -96,7 +96,7 @@ export const Navbar: React.FC = () => {
             >
               <Scan className="h-5 w-5 text-amber-400" />
               1000+ Scanner
-              {!isVipMember && <Lock className="h-3.5 w-3.5 text-amber-400 ml-0.5" />}
+              {!isVipMember && <span className="h-3.5 w-3.5 text-amber-400 ml-0.5">LOCK</span>}
             </Button>
           </Link>
 
