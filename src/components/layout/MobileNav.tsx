@@ -8,7 +8,8 @@ import {
   Newspaper, 
   Instagram,
   Lock,
-  Sparkles
+  Sparkles,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -41,10 +42,10 @@ const MobileNav: React.FC = () => {
         Scanner
       </Link>
 
-      <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-0.5 text-[10px] font-extrabold text-pink-400">
-        <Instagram className="h-5 w-5" />
-        Buy VIP
-      </a>
+      <Link to="/bot-settings" className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${isActive('/bot-settings') ? 'text-indigo-400' : 'text-slate-400'}`}>
+        <Settings className="h-5 w-5" />
+        Bots
+      </Link>
     </div>
   );
 };
