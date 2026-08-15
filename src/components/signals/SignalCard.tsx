@@ -13,7 +13,8 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Lock,
-  Clock
+  Clock,
+  Target
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
