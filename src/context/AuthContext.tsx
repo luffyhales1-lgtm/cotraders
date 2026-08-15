@@ -168,17 +168,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (email: string, pass: string): boolean => {
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
-      const adminAcc: UserProfile = {
-        id: generateUUID(), // Generate a new ID for the admin session (or we could use the one from INITIAL_USERS)
-        email: ADMIN_EMAIL,
-        name: 'Cotraders',
-        tier: 'vip_yearly',
-        isAdmin: true,
-        subscriptionStart: new Date().toISOString(),
-        subscriptionEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        isExpired: false,
-      };
-      setUser(adminAcc);
+      // Find the existing admin user from INITIAL_USERS
+      const existingAdmin = INITIAL_USERS.find(u => u.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
+      if (existingAdmin) {
+        setUser(existingAdmin);
+      } else {
+        // Fallback: create admin user if not found (shouldn't happen)
+        const adminAcc: UserProfile = {
+          id: generateUUID(),
+          email: ADMIN_EMAIL,
+          name: 'Cotraders',
+          tier: 'vip_yearly',
+          isAdmin: true,
+          subscriptionStart: new Date().toISOString(),
+          subscriptionEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+          isExpired: false,
+        };
+        setUser(adminAcc);
+      }
       toast.success('Master Admin Verified! Full Terminal & Management Unlocked.');
       return true;
     }
