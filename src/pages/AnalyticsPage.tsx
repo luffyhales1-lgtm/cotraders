@@ -8,6 +8,7 @@ import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Award, Zap, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 
 const AnalyticsPage: React.FC = () => {
