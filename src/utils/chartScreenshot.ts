@@ -19,6 +19,12 @@ export interface TradeChartParams {
 }
 
 export function generateTradeSetupChartImage(params: TradeChartParams): string {
+  // Check if we are in a browser environment to avoid SSR issues
+  if (typeof document === 'undefined') {
+    // Return empty string if not in browser (e.g., during SSR)
+    return '';
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = 960;
   canvas.height = 540;
