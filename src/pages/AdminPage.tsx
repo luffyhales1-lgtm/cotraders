@@ -6,7 +6,6 @@ import {
   UserPlus, 
   Users, 
   ShieldCheck, 
-  Lock, 
   Send, 
   Instagram, 
   LogIn, 
@@ -336,7 +335,7 @@ const AdminPage: React.FC = () => {
                                 <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-400">FREE</Badge>
                               )}
                             </td>
-                            <td className="p-4 text-slate-300">{expiresDate}</td>
+                            <td className="p-4 text-slate-300>{expiresDate}</td>
                           </tr>
                         );
                       })}
