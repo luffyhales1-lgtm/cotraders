@@ -22,7 +22,8 @@ import {
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
-  Send
+  Send,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
