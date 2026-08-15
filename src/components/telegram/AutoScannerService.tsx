@@ -329,7 +329,7 @@ export const AutoScannerService: React.FC = () => {
                   </Badge>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
