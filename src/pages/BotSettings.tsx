@@ -23,19 +23,31 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
- 
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useLocation } from 'react-router-dom';
+import { 
+  TrendingUp, 
+  Sparkles, 
+  LineChart, 
+  Scan,
+  Settings as SettingsIcon
+} from 'lucide-react';
+
 const BotSettings: React.FC = () => {
   const { user, updateTelegramConfig, isVipMember, logout } = useAuth();
   const [botToken, setBotToken] = useState<string>('');
   const [chatId, setChatId] = useState<string>('');
   const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
- 
+  const location = useLocation();
+  const isMobile = useIsMobile();
+  const isActive = (path: string) => location.pathname === path;
+
   useEffect(() => {
     if (!user || !isVipMember) return;
     fetchUserTelegramConfig();
   }, [user, isVipMember]);
- 
+
   const fetchUserTelegramConfig = async () => {
     if (!user) return;
     try {
@@ -45,13 +57,13 @@ const BotSettings: React.FC = () => {
         .select('bot_token, chat_id, auto_scan_enabled')
         .eq('user_id', user.id)
         .single();
- 
+
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching telegram config:', error);
         toast.error('Failed to load your bot configuration');
         return;
       }
- 
+
       if (data) {
         setBotToken(data.bot_token || '');
         setChatId(data.chat_id || '');
@@ -69,11 +81,11 @@ const BotSettings: React.FC = () => {
       setLoading(false);
     }
   };
- 
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
- 
+
     setLoading(true);
     try {
       // Update bot token and chat ID
@@ -83,21 +95,21 @@ const BotSettings: React.FC = () => {
           { user_id: user.id, bot_token: botToken, chat_id: chatId },
           { onConflict: 'user_id' }
         );
- 
+
       if (upsertError) {
         throw upsertError;
       }
- 
+
       // Update auto-scan enabled
       const { error: updateError } = await supabase
         .from('telegram_configs')
         .update({ auto_scan_enabled: autoScanEnabled })
         .eq('user_id', user.id);
- 
+
       if (updateError) {
         throw updateError;
       }
- 
+
       toast.success('Bot configuration saved successfully!');
     } catch (err) {
       console.error('Error saving bot configuration:', err);
@@ -106,7 +118,7 @@ const BotSettings: React.FC = () => {
       setLoading(false);
     }
   };
- 
+
   if (!isVipMember) {
     return (
       <>
@@ -131,9 +143,30 @@ const BotSettings: React.FC = () => {
       </>
     );
   }
- 
+
   return (
     <>
+      {isMobile && (
+        <div className="bg-slate-950/95 backdrop-blur-[10px] border-b border-slate-800/90 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Link to="/" className={`text-[10px] font-bold ${isActive('/') ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <TrendingUp className="h-4 w-4 mr-1" /> Home
+            </Link>
+            <Link to="/signals" className={`text-[10px] font-bold ${isActive('/signals') ? 'text-cyan-400' : 'text-slate-400'}`}>
+              <Sparkles className="h-4 w-4 mr-1" /> Signals
+            </Link>
+            <Link to="/charts" className={`text-[10px] font-bold ${isActive('/charts') ? 'text-indigo-400' : 'text-slate-400'}`}>
+              <LineChart className="h-4 w-4 mr-1" /> Terminal
+            </Link>
+            <Link to="/scanner" className={`text-[10px] font-bold ${isActive('/scanner') ? 'text-amber-400' : 'text-slate-400'}`}>
+              <Scan className="h-4 w-4 mr-1" /> Scanner
+            </Link>
+            <Link to="/bot-settings" className={`text-[10px] font-bold ${isActive('/bot-settings') ? 'text-indigo-400' : 'text-slate-400'}`}>
+              <SettingsIcon className="h-4 w-4 mr-1" /> Bots
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
         <span className="text-slate-400">{user.email}</span>
         <Button onClick={logout} variant="ghost" size="icon" title="Logout">
@@ -164,7 +197,7 @@ const BotSettings: React.FC = () => {
                 disabled={loading}
               />
             </div>
- 
+
             <div>
               <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Chat / Channel ID</label>
               <Input
@@ -177,7 +210,7 @@ const BotSettings: React.FC = () => {
                 disabled={loading}
               />
             </div>
- 
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -190,7 +223,7 @@ const BotSettings: React.FC = () => {
                 Enable Auto Scan (Receive automated trading signals)
               </span>
             </div>
- 
+
             <Button 
               type="submit" 
               disabled={loading} 
@@ -201,7 +234,7 @@ const BotSettings: React.FC = () => {
           </form>
         </CardContent>
       </div>
- 
+
       {/* Current Status */}
       <div className="mt-6 p-4 rounded-2xl bg-slate-900 border border-slate-800">
         <h3 className="font-bold text-lg text-slate-100 mb-4">Current Status</h3>
@@ -222,7 +255,7 @@ const BotSettings: React.FC = () => {
           </div>
         </div>
       </div>
- 
+
       {/* Help Section */}
       <div className="mt-6 p-4 rounded-2xl bg-slate-900 border border-slate-800">
         <h3 className="font-bold text-lg text-slate-100 mb-4">How to Get Your Telegram Bot Token and Chat ID</h3>
@@ -239,5 +272,5 @@ const BotSettings: React.FC = () => {
     </>
   );
 };
- 
+
 export default BotSettings;
