@@ -77,6 +77,9 @@ const NewsPage: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Determine which news to show based on VIP status
+  const newsToShow = user?.tier !== 'free' ? news : news.slice(0, 1);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       <TickerTape />
@@ -104,7 +107,7 @@ const NewsPage: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {news.map(item => {
+            {newsToShow.map(item => {
               const isLocked = item.isVipOnly && user?.tier === 'free';
               return (
                 <div key={item.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
