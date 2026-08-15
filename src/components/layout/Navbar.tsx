@@ -1,3 +1,30 @@
+import { useAuth } from '@/context/AuthContext';
+import { Link, useLocation } from 'react-router-dom';
+import { 
+  Activity, 
+  TrendingUp, 
+  Sparkles, 
+  LineChart, 
+  Scan, 
+  Crown, 
+  Award, 
+  ShieldCheck, 
+  Radio, 
+  LogIn, 
+  LogOut,
+  UserPlus, 
+  Users, 
+  Send, 
+  Instagram, 
+  ArrowRight
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
 export const Navbar: React.FC = () => {
   const { user, logout, instagramUrl, isVipMember } = useAuth();
   const location = useLocation();
@@ -7,7 +34,6 @@ export const Navbar: React.FC = () => {
   return (
     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-[10px] border-b border-slate-800/90 px-4 lg:px-8 py-3 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
@@ -154,3 +180,5 @@ export const Navbar: React.FC = () => {
     </header>
   );
 };
+
+export default Navbar;
