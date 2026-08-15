@@ -216,8 +216,8 @@ const BotSettings: React.FC = () => {
           <ol className="list-decimal list-inside space-y-2 text-slate-400">
             <li>Talk to @BotFather on Telegram to create a new bot and get your token</li>
             <li>Start a chat with your bot and send any message</li>
-            <li>Get your chat ID by visiting: https://api.telegram.org/bot<your_token>/getUpdates</li>
-            <li>Look for "chat":{"id":<your_chat_id>} in the response</li>
+            <li>Get your chat ID by visiting: {'https://api.telegram.org/bot<your_token>/getUpdates'}</li>
+            <li>Look for {'"chat":{"id":<your_chat_id>}'} in the response</li>
           </ol>
           <p className="mt-3 text-slate-400">
             <strong>Note:</strong> Your bot must be started (send /start to it) before it can receive messages.
