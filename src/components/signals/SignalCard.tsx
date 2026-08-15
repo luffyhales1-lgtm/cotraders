@@ -1,3 +1,26 @@
+import React, { useState } from 'react';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Sparkles, 
+  Zap, 
+  Crown, 
+  ArrowUpRight, 
+  ArrowDownRight,
+  ShieldCheck,
+  BarChart2,
+  Send,
+  Image as ImageIcon,
+  ExternalLink,
+  Lock
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/context/AuthContext';
+import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
+import { toast } from 'sonner';
+
 interface SignalCardProps {
   signal: Signal;
   onSelectSymbol?: (symbol: string) => void;
@@ -113,7 +136,7 @@ Platform: LiveTrading AI Pro`;
           <div className="relative py-8 px-6 bg-slate-950/85 rounded-xl border border-amber-500/30 text-center flex flex-col items-center justify-center my-4 backdrop-blur-sm">
             <div className="h-12 w-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-3">
               <Lock className="h-7 w-7 text-amber-400" />
-            </div>
+            </div
             <h4 className="font-extrabold text-sm text-slate-100">VIP Exclusive AI Signal</h4>
             <p className="text-xs text-slate-400 mt-2 max-w-xs">
               Targets, Stop Loss & SMC Rationale locked for Free accounts.
