@@ -1,11 +1,3 @@
-
-This is clearly malformed - it looks like the import statement got cut off and then there's a dyad-write tag inside the import statement.
-
-Let me fix this by correcting the import statement and making sure the file is properly formatted.
-
-</think><dyad-read path="src/components/trading/LiquidityHeatmap.tsx"></dyad-read>
-
-<dyad-write path="src/components/trading/LiquidityHeatmap.tsx" description="">
 import React from 'react';
 import { Shield, Layers, Flame, Target, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
