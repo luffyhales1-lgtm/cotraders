@@ -1,3 +1,27 @@
+import React, { useState, useEffect } from 'react';
+import { Navbar } from '@/components/layout/Navbar';
+import { TickerTape } from '@/components/layout/TickerTape';
+import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
+import { 
+  UserPlus, 
+  Users, 
+  ShieldCheck, 
+  Lock, 
+  Send, 
+  Instagram, 
+  LogIn, 
+  ArrowRight,
+  Crown
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
 const AdminPage: React.FC = () => {
   const {
     user,
@@ -63,7 +87,7 @@ const AdminPage: React.FC = () => {
     };
 
   const [targetEmail, setTargetEmail] = useState<string>('');
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('vip_monthly');
+  const [selectedTier, setSelectedTier] = useState<'vip_monthly' | 'vip_yearly' | 'free'>('vip_monthly');
   const [durationDays, setDurationDays] = useState<number>(30);
   const [tokenInput, setTokenInput] = useState<string>(telegramBotToken);
   const [chatIdInput, setChatIdInput] = useState<string>(telegramChatId);
@@ -179,7 +203,7 @@ const AdminPage: React.FC = () => {
                     <label className="text-xs text-slate-400 font-bold block mb-2">Subscription Tier</label>
                     <select
                       value={selectedTier}
-                      onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
+                      onChange={(e) => setSelectedTier(e.target.value as 'vip_monthly' | 'vip_yearly' | 'free')}
                       className="w-full p-3 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 font-bold"
                     >
                       <option value="vip_monthly">VIP Monthly ($29.90 / 30 Days)</option>
