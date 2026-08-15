@@ -36,8 +36,7 @@ export const MobileNav: React.FC = () => {
       <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-0.5 text-[10px] font-extrabold text-pink-400">
         <Instagram className="h-4 w-4" />
         Buy VIP
-      </Link>
-
+      </a>
     </div>
   );
 };
