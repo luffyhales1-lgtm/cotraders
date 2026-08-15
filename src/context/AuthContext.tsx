@@ -29,10 +29,10 @@ interface AuthContextType {
 }
 
 const ADMIN_EMAIL = 'luffyhales1@gmail.com';
-const ADMIN_PASS = 'yahoo789';
+const ADMIN_PASS = 'Yahoo132$';
 
 const INSTAGRAM_URL = 'https://www.instagram.com/abdul_kaif12';
-const VIP_MONTHLY_PRICE = 49.90;
+const VIP_MONTHLY_PRICE = 29.90;
 const VIP_YEARLY_PRICE = 99.90;
 
 // Generate IDs for initial users
@@ -40,7 +40,7 @@ const INITIAL_USERS: UserProfile[] = [
   {
     id: generateUUID(),
     email: ADMIN_EMAIL,
-    name: 'Master Admin (Abdul Kaif)',
+    name: 'Cotraders',
     tier: 'vip_yearly',
     isAdmin: true,
     subscriptionStart: new Date().toISOString(),
@@ -171,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const adminAcc: UserProfile = {
         id: generateUUID(), // Generate a new ID for the admin session (or we could use the one from INITIAL_USERS)
         email: ADMIN_EMAIL,
-        name: 'Master Admin (Abdul Kaif)',
+        name: 'Cotraders',
         tier: 'vip_yearly',
         isAdmin: true,
         subscriptionStart: new Date().toISOString(),

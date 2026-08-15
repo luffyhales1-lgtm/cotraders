@@ -51,7 +51,7 @@ const STRATEGIES: StrategyName[] = [
 ];
 
 export const AutoScannerService: React.FC = () => {
-  const { telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
+  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [totalScannedCount, setTotalScannedCount] = useState<number>(1048);
@@ -59,8 +59,16 @@ export const AutoScannerService: React.FC = () => {
   const [logs, setLogs] = useState<AutoScanLog[]>([]);
   const [selectedLogForModal, setSelectedLogForModal] = useState<AutoScanLog | null>(null);
 
+  // Check if user is VIP and has set up bot
+  const isVipWithBot = user && user.tier !== 'free' && telegramBotToken && telegramChatId;
+
   // Immediate Backtest Report Handler
   const handleTriggerImmediateBacktest = async () => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      return;
+    }
+
     toast.info('Compiling immediate backtest performance report...');
     const summary = generateLiveBacktestSummary('Immediate On-Demand Backtest');
 
@@ -75,6 +83,11 @@ export const AutoScannerService: React.FC = () => {
 
   // Core scan execution function (now manual only)
   const executeAutoScan = async () => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      return;
+    }
+
     setIsScanning(true);
 
     try {
@@ -302,7 +315,7 @@ export const AutoScannerService: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 text-right">
-                  <span className="text-emerald-400 font-bold">{log.winProb}% Win</span>
+                  <span className="text-emerald-400 font-bold>{log.winProb}% Win</span>
                   <Button
                     size="sm"
                     variant="outline"

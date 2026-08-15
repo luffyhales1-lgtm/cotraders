@@ -3,13 +3,13 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { generateLiveBacktestSummary, sendBacktestReportToTelegram } from '@/services/backtestService';
-import { 
-  Bot, 
-  Send, 
-  Sparkles, 
-  Scan, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Bot,
+  Send,
+  Sparkles,
+  Scan,
+  Clock,
+  CheckCircle2,
   ExternalLink,
   Zap,
   ArrowRight,
@@ -22,13 +22,16 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export const TelegramBotSimulator: React.FC = () => {
-  const { telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
+  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
 
   const [step, setStep] = useState<'IDLE' | 'SELECT_TIMEFRAME' | 'SELECT_COIN' | 'SCANNING' | 'COMPLETED'>('IDLE');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('5m');
   const [liveAssets, setLiveAssets] = useState<any[]>([]);
   const [selectedCoin, setSelectedCoin] = useState<string>('XAUUSDT');
   const [scannedSignal, setScannedSignal] = useState<any | null>(null);
+
+  // Check if user is VIP and has set up bot
+  const isVipWithBot = user && user.tier !== 'free' && telegramBotToken && telegramChatId;
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -47,12 +50,20 @@ export const TelegramBotSimulator: React.FC = () => {
   ];
 
   const handleStartScannerMenu = async () => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      return;
+    }
     const tickers = await fetchTopCryptos();
     setLiveAssets(tickers.slice(0, 8));
     setStep('SELECT_TIMEFRAME');
   };
 
   const handleTriggerImmediateBacktest = async () => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      return;
+    }
     toast.info('Generating immediate backtesting report...');
     const summary = generateLiveBacktestSummary('Telegram Interactive On-Demand Report');
     
@@ -70,6 +81,10 @@ export const TelegramBotSimulator: React.FC = () => {
   };
 
   const handleSelectCoinAndScan = (coinSymbol: string) => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      return;
+    }
     setSelectedCoin(coinSymbol);
     setStep('SCANNING');
 
@@ -147,6 +162,10 @@ export const TelegramBotSimulator: React.FC = () => {
   };
 
   const handleReset = () => {
+    if (!isVipWithBot) {
+      toast.error('Only VIP members with configured Telegram bot can reset their bot.');
+      return;
+    }
     setStep('IDLE');
     setScannedSignal(null);
   };
@@ -174,11 +193,21 @@ export const TelegramBotSimulator: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button onClick={handleTriggerImmediateBacktest} size="sm" variant="outline" className="border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs font-bold gap-1">
+          <Button 
+            onClick={handleTriggerImmediateBacktest} 
+            size="sm" 
+            variant="outline" 
+            className={isVipWithBot ? "border-purple-500/40 text-purple-300 hover:bg-purple-500/10 text-xs font-bold gap-1" : "border-slate-500/50 text-slate-400 cursor-not-allowed"}
+          >
             <BarChart2 className="h-3.5 w-3.5 text-purple-400" /> Immediate Backtest Report
           </Button>
 
-          <Button onClick={handleReset} variant="outline" size="sm" className="border-slate-800 text-slate-400 text-xs font-bold">
+          <Button 
+            onClick={handleReset} 
+            variant="outline" 
+            size="sm" 
+            className={isVipWithBot ? "border-slate-800 text-slate-400 text-xs font-bold" : "border-slate-500/50 text-slate-400 cursor-not-allowed"}
+          >
             Reset Bot Menu
           </Button>
         </div>
@@ -193,12 +222,12 @@ export const TelegramBotSimulator: React.FC = () => {
               <Bot className="h-4 w-4" /> LiveTrading Telegram Bot Engine
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Welcome! Tap <b>🔍 Live Binance Futures & Gold Scanner</b> to perform footprint delta analysis & send chart screenshots to Telegram:
+              Welcome! Tap <b>🔍 Live Futures & Gold Scanner</b> to perform footprint delta analysis & send chart screenshots to Telegram:
             </p>
             <div className="pt-2 flex flex-col sm:flex-row gap-2">
               <Button 
                 onClick={handleStartScannerMenu} 
-                className="flex-1 bg-gradient-to-r from-cyan-600 via-teal-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold text-xs py-5 gap-2 shadow-lg shadow-cyan-950/40"
+                className={isVipWithBot ? "flex-1 bg-gradient-to-r from-cyan-600 via-teal-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-extrabold text-xs py-5 gap-2 shadow-lg shadow-cyan-950/40" : "flex-1 border-slate-500/50 text-slate-400 cursor-not-allowed"}
               >
                 <Scan className="h-4 w-4" />
                 Tap Menu: 🔍 Live Futures & Gold Scanner
@@ -208,7 +237,7 @@ export const TelegramBotSimulator: React.FC = () => {
               <Button 
                 onClick={handleTriggerImmediateBacktest} 
                 variant="outline"
-                className="border-purple-500/50 text-purple-300 hover:bg-purple-500/10 font-bold text-xs py-5 gap-2"
+                className={isVipWithBot ? "border-purple-500/50 text-purple-300 hover:bg-purple-500/10 font-bold text-xs py-5 gap-2" : "border-slate-500/50 text-slate-400 cursor-not-allowed"}
               >
                 <BarChart2 className="h-4 w-4" />
                 📊 Immediate Backtest Report
