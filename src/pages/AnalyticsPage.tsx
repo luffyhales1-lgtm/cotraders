@@ -5,6 +5,7 @@ import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { StrategyBacktest } from '@/components/trading/StrategyBacktest';
 import { EconomicCalendar } from '@/components/trading/EconomicCalendar';
 import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
+import { HyperliquidWhaleTracker } from '@/components/analytics/HyperliquidWhaleTracker'; // New component
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Award, Zap, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +49,7 @@ const AnalyticsPage: React.FC = () => {
         <UpgradeBanner />
 
         <div className="mb-8">
-          <Badge className="bg-indigo-500/20 text-indigo-400 border-indigo-500/40 font-bold mb-2">
+          <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 font-bold mb-2">
             <Zap className="h-3.5 w-3.5 mr-1" /> BINANCE FUTURES & GROK AI ANALYTICS
           </Badge>
           <h1 className="text-3xl font-black text-slate-100">Grok AI Intelligence & Quantitative Backtests</h1>
@@ -61,6 +62,11 @@ const AnalyticsPage: React.FC = () => {
         <div className="grid grid-cols-1 gap-8 mt-8">
           <StrategyBacktest />
           <EconomicCalendar />
+        </div>
+
+        {/* Hyperliquid Whale Tracker (VIP-only) */}
+        <div className="mt-8">
+          <HyperliquidWhaleTracker />
         </div>
 
       </main>

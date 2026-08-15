@@ -4,22 +4,30 @@
 
 @layer base {
   :root {
-    --background: 218 60% 4%;
-    --foreground: 210 40% 98%;
-    --card: 218 60% 4%;
+    --background: 262 60% 5%; /* Deep purple background */
+    --foreground: 210 40% 98%; /* Light text */
+
+    --card: 262 60% 5%;
     --card-foreground: 210 40% 98%;
-    --popover: 218 60% 4%;
+
+    --popover: 262 60% 5%;
     --popover-foreground: 210 40% 98%;
-    --primary: 180 60% 45%;
+
+    --primary: 262 80% 40%; /* Rich purple */
     --primary-foreground: 210 40% 98%;
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 45 60% 50%;
+
+    --accent: 45 60% 50%; /* Gold accent */
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
