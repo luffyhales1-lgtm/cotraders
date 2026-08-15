@@ -23,15 +23,8 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useLocation } from 'react-router-dom';
-import { 
-  TrendingUp, 
-  Sparkles, 
-  LineChart, 
-  Scan,
-  Settings as SettingsIcon
-} from 'lucide-react';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { Menu } from 'lucide-react';
 
 const BotSettings: React.FC = () => {
   const { user, updateTelegramConfig, isVipMember, logout } = useAuth();
@@ -39,9 +32,6 @@ const BotSettings: React.FC = () => {
   const [chatId, setChatId] = useState<string>('');
   const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  const location = useLocation();
-  const isMobile = useIsMobile();
-  const isActive = (path: string) => location.pathname === path;
 
   useEffect(() => {
     if (!user || !isVipMember) return;
@@ -146,32 +136,49 @@ const BotSettings: React.FC = () => {
 
   return (
     <>
-      {isMobile && (
-        <div className="bg-slate-950/95 backdrop-blur-[10px] border-b border-slate-800/90 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Link to="/" className={`text-[10px] font-bold ${isActive('/') ? 'text-emerald-400' : 'text-slate-400'}`}>
-              <TrendingUp className="h-4 w-4 mr-1" /> Home
-            </Link>
-            <Link to="/signals" className={`text-[10px] font-bold ${isActive('/signals') ? 'text-cyan-400' : 'text-slate-400'}`}>
-              <Sparkles className="h-4 w-4 mr-1" /> Signals
-            </Link>
-            <Link to="/charts" className={`text-[10px] font-bold ${isActive('/charts') ? 'text-indigo-400' : 'text-slate-400'}`}>
-              <LineChart className="h-4 w-4 mr-1" /> Terminal
-            </Link>
-            <Link to="/scanner" className={`text-[10px] font-bold ${isActive('/scanner') ? 'text-amber-400' : 'text-slate-400'}`}>
-              <Scan className="h-4 w-4 mr-1" /> Scanner
-            </Link>
-            <Link to="/bot-settings" className={`text-[10px] font-bold ${isActive('/bot-settings') ? 'text-indigo-400' : 'text-slate-400'}`}>
-              <SettingsIcon className="h-4 w-4 mr-1" /> Bots
-            </Link>
-          </div>
-        </div>
-      )}
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
         <span className="text-slate-400">{user.email}</span>
-        <Button onClick={logout} variant="ghost" size="icon" title="Logout">
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem>
+                <Link to="/" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
+                  <TrendingUp className="mr-2 h-4 w-4" /> Home
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link to="/signals" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
+                  <Sparkles className="mr-2 h-4 w-4" /> Signals
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link to="/charts" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
+                  <LineChart className="mr-2 h-4 w-4" /> Terminal
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link to="/scanner" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
+                  <Scan className="mr-2 h-4 w-4" /> Scanner
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link to="/bot-settings" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100 font-bold">
+                  <Settings className="mr-2 h-4 w-4" /> Bots
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="border-t">
+                <Button onClick={logout} variant="ghost" size="icon" className="w-full justify-start px-2 py-2 text-slate-400">
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </Button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
         <CardHeader>
