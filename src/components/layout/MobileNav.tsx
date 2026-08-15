@@ -7,7 +7,8 @@ import {
   Scan, 
   Newspaper, 
   Instagram,
-  Lock
+  Lock,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
