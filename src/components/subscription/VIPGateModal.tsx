@@ -26,7 +26,7 @@ export const VIPGateModal: React.FC<VIPGateModalProps> = ({
 
       <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono text-xs px-3 py-1 mb-3">
         INSTITUTIONAL TERMINAL LOCKED
-      </Badge>
+      </div>
 
       <h2 className="text-2xl md:text-3xl font-black text-slate-100 tracking-tight">{title}</h2>
       <p className="text-sm text-slate-300 mt-2 max-w-xl mx-auto leading-relaxed">{description}</p>

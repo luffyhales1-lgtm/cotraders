@@ -12,9 +12,9 @@ import {
   LogIn,
   Sparkles,
   Award,
-  Lock,
   Radio
 } from 'lucide-react';
+import Lock from 'lucide-react/dist/esm/icons/lock';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 

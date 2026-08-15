@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { TrendingUp, Sparkles, LineChart, Scan, Newspaper, Instagram } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import Lock from 'lucide-react/dist/esm/icons/lock';
 
 export const MobileNav: React.FC = () => {
   const location = useLocation();
@@ -35,7 +36,7 @@ export const MobileNav: React.FC = () => {
       <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-0.5 text-[10px] font-extrabold text-pink-400">
         <Instagram className="h-4 w-4" />
         Buy VIP
-      </a>
+      </Link>
 
     </div>
   );
