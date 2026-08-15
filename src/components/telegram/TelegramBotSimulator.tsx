@@ -288,9 +288,9 @@ export const TelegramBotSimulator: React.FC = () => {
                   className="bg-slate-900 border border-slate-800 hover:border-emerald-500 text-slate-100 font-bold text-xs py-5 flex flex-col items-center justify-center gap-0.5"
                 >
                   <span className="font-mono">{c.pair}</span>
-                  <span className="text-[10px] text-emerald-400 font-mono">${c.price < 10 ? c.price.toFixed(4) : c.price.toLocaleString()}</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">{c.price < 10 ? c.price.toFixed(4) : c.price.toLocaleString()}</span>
                 </Button>
-              )}
+              ))}
             </div>
           </div>
         )}
