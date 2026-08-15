@@ -235,7 +235,7 @@ export const AutoScannerService: React.FC = () => {
 
         {/* Controls & Immediate Backtest Trigger */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs flex items-center gap-2">
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono text-xs flex items-center gap-2">
             <span className="text-slate-400">Last Scan:</span>
             <span className="font-extrabold text-emerald-400 text-sm">{isScanning ? 'SCANNING...' : lastScanTime}</span>
           </div>
