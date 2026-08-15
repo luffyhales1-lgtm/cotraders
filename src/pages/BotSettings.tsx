@@ -22,9 +22,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 
 const BotSettings: React.FC = () => {
-  const { user, updateTelegramConfig, isVipMember } = useAuth();
+  const { user, updateTelegramConfig, isVipMember, logout } = useAuth();
   const [botToken, setBotToken] = useState<string>('');
   const [chatId, setChatId] = useState<string>('');
   const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(false);
@@ -108,75 +109,87 @@ const BotSettings: React.FC = () => {
 
   if (!isVipMember) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-          <UpgradeBanner />
-          <VIPGateModal 
-            title="Bot Settings Locked" 
-            description="Upgrade to VIP to manage your Telegram bot configurations, enable/disable auto-scan, and customize your trading signals."
-          />
-        </main>
-      </div>
+      <>
+        {!user ? (
+          <div className="p-4 bg-slate-900 border-b border-slate-800 text-center">
+            <Link to="/login" className="text-indigo-400 hover:text-indigo-300">
+              Login to access bot settings
+            </Link>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+            <span className="text-slate-400">{user.email}</span>
+            <Button onClick={logout} variant="ghost" size="icon" title="Logout">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        )}
+        <VIPGateModal 
+          title="Bot Settings Locked" 
+          description="Upgrade to VIP to manage your Telegram bot configurations, enable/disable auto-scan, and customize your trading signals."
+        />
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-        <UpgradeBanner />
+    <>
+      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+        <span className="text-slate-400">{user.email}</span>
+        <Button onClick={logout} variant="ghost" size="icon" title="Logout">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </div>
+      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold flex items-center gap-3 text-indigo-400">
+            <Settings className="h-6 w-6" />
+            My Bot Settings
+          </CardTitle>
+          <Badge variant="outline" className="text-slate-400 border-slate-800 text-[10px]">
+            VIP Exclusive
+          </Badge>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSaveConfig} className="space-y-6">
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Bot Token</label>
+              <Input
+                type="password"
+                placeholder="123456789:ABCdefGHI..."
+                value={botToken}
+                onChange={(e) => setBotToken(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+                required
+                disabled={loading}
+              />
+            </div>
 
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
-          <CardHeader>
-            <CardTitle className="text-lg font-bold flex items-center gap-3 text-indigo-400">
-              <Settings className="h-6 w-6" />
-              My Bot Settings
-            </CardTitle>
-            <Badge variant="outline" className="text-slate-400 border-slate-800 text-[10px]">
-              VIP Exclusive
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSaveConfig} className="space-y-6">
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Bot Token</label>
-                <Input
-                  type="password"
-                  placeholder="123456789:ABCdefGHI..."
-                  value={botToken}
-                  onChange={(e) => setBotToken(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
-                  required
-                  disabled={loading}
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Chat / Channel ID</label>
+              <Input
+                type="text"
+                placeholder="-100123456789"
+                value={chatId}
+                onChange={(e) => setChatId(e.target.value)}
+                className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+                required
+                disabled={loading}
+              />
+            </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Chat / Channel ID</label>
-                <Input
-                  type="text"
-                  placeholder="-100123456789"
-                  value={chatId}
-                  onChange={(e) => setChatId(e.target.value)}
-                  className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={autoScanEnabled}
-                  onChange={(e) => setAutoScanEnabled(e.target.checked)}
-                  className="h-5 w-5 text-indigo-600 bg-slate-950 border-slate-800 rounded"
-                  disabled={loading}
-                />
-                <span className="ml-2.5 text-slate-100 text-xs">
-                  Enable Auto Scan (Receive automated trading signals)
-                </span>
-              </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={autoScanEnabled}
+                onChange={(e) => setAutoScanEnabled(e.target.checked)}
+                className="h-5 w-5 text-indigo-600 bg-slate-950 border-slate-800 rounded"
+                disabled={loading}
+              />
+              <span className="ml-2.5 text-slate-100 text-xs">
+                Enable Auto Scan (Receive automated trading signals)
+              </span>
+            </div>
 
               <Button 
                 type="submit" 
@@ -224,7 +237,7 @@ const BotSettings: React.FC = () => {
           </p>
         </div>
       </main>
-    </div>
+    </>
   );
 };
 
