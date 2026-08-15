@@ -52,7 +52,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    const coinglassApiKey = 'cl_d7956c832867921bed556d842d84f0e0c279f66f6cc15ba0' // Provided API key
+    const coinglassApiKey = 'cl_d7956c832867921bed556d842d84f0e0c279f66f6cc15ba0'
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error('[coinglass-whale-tracker] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
@@ -118,12 +118,14 @@ serve(async (req) => {
         const price = item.entry_price || item.mark_price
         const amount = item.size
         const usdValue = item.value
-        const timestamp = Math.floor(item.timestamp / 1000) // Convert to seconds if needed
-        const wallet = `${item.wallet.slice(0, 6)}...${item.wallet.slice(-4)}`
-        
+        const timestamp = Math.floor(item.timestamp / 1000)
+        // Handle wallet: if wallet is too short, just use it
+        const wallet = item.wallet.length > 10 
+          ? `${item.wallet.slice(0, 6)}...${item.wallet.slice(-4)}` 
+          : item.wallet
         return {
-          id: `${item.symbol}-${item.timestamp}`, // Generate unique ID
-          source: 'chain' as const, // Using chain source for compatibility
+          id: `${item.symbol}-${item.timestamp}`,
+          source: 'chain' as const,
           timestamp,
           asset,
           action: isLong ? 'BUY' : 'SELL',
