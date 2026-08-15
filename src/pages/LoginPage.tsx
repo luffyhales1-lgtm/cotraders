@@ -11,8 +11,8 @@ const LoginPage: React.FC = () => {
   const { login, instagramUrl } = useAuth();
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState<string>('luffyhales1@gmail.com');
-  const [password, setPassword] = useState<string>('yahoo789');
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

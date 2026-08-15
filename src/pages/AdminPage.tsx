@@ -158,8 +158,9 @@ const AdminPage: React.FC = () => {
               <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono font-bold">
                 <ShieldCheck className="h-4 w-4 mr-1.5" /> MASTER ADMIN CONTROL PANEL
               </Badge>
+              {/* Changed from user.email to user.name to avoid showing login credentials */}
               <Badge variant="outline" className="text-slate-400 border-slate-800 font-mono text-[11px]">
-                {user.email}
+                {user.name}
               </Badge>
             </div>
             <h1 className="text-3.5xl font-black text-slate-100 mt-3">Subscription & Telegram Dispatch Manager</h1>
