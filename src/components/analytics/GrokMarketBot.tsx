@@ -11,8 +11,7 @@ import {
   BarChart2, 
   TrendingUp, 
   ShieldCheck,
-  Globe,
-  Radio,
+  Globe as GlobeIcon,
   Image as ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -109,7 +108,7 @@ export const GrokMarketBot: React.FC = () => {
   }, []);
 
   return (
-    <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-cyan-950/70 to-slate-900 border border-cyan-500/50 shadow-2xl text-slate-100 font-sans my-8 relative overflow-hidden">
+    <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-cyan-950/70 to-slate-900 border border-cyan-500/50 shadow-2xl text-slate-100 font-sans">
       
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">
@@ -119,7 +118,7 @@ export const GrokMarketBot: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-black text-lg text-slate-100">Grok AI Quantitative Intelligence & Live Market Statement</h3>
-              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/40 text-[10px] gap-1 font-bold">
+              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/40 text-[10px]">
                 <Sparkles className="h-3 w-3 text-cyan-400" /> GROK AI ENGINE
               </Badge>
             </div>
@@ -142,12 +141,12 @@ export const GrokMarketBot: React.FC = () => {
       {/* Market Statement Banner */}
       <div className="my-4 p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/30 text-xs leading-relaxed font-mono">
         <span className="text-cyan-400 font-bold font-sans block text-sm mb-1 flex items-center gap-2">
-          <Globe className="h-4 w-4 text-cyan-400" /> GROK AI LIVE MARKET STATEMENT
+          <GlobeIcon className="h-4 w-4 text-cyan-400" /> GROK AI LIVE MARKET STATEMENT
         </span>
         <p className="text-slate-300">{marketStatement}</p>
       </div>
 
-      {/* Grok AI Signal Output */}
+      {/* Grok Signal Output */}
       {grokSignal && (
         <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-3">
           <div className="flex items-center justify-between pb-2 border-b border-slate-800">
