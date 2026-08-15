@@ -5,7 +5,7 @@ import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { StrategyBacktest } from '@/components/trading/StrategyBacktest';
 import { EconomicCalendar } from '@/components/trading/EconomicCalendar';
 import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
-import { HyperliquidWhaleTracker } from '@/components/analytics/HyperliquidWhaleTracker'; // New component
+import { HyperliquidWhaleTracker } from '@/components/analytics/HyperliquidWhaleTracker';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Award, Zap, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

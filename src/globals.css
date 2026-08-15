@@ -4,22 +4,30 @@
 
 @layer base {
   :root {
-    --background: 262 60% 5%; /* slate.950 */
-    --foreground: 240 5% 98%; /* slate.50 */
+    --background: 262 60% 5%; /* Deep purple background */
+    --foreground: 210 40% 98%; /* Light text */
+
     --card: 262 60% 5%;
-    --card-foreground: 240 5% 98%;
+    --card-foreground: 210 40% 98%;
+
     --popover: 262 60% 5%;
-    --popover-foreground: 240 5% 98%;
+    --popover-foreground: 210 40% 98%;
+
     --primary: 262 80% 40%; /* Rich purple */
-    --primary-foreground: 240 5% 98%;
+    --primary-foreground: 210 40% 98%;
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
+
     --accent: 45 60% 50%; /* Gold accent */
     --accent-foreground: 210 40% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
@@ -53,4 +61,28 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Custom utility classes for our theme */
+.bg-purple-gradient {
+  background: linear-gradient(135deg, #6b21a8, #4c1d95);
+}
+
+.bg-gold-gradient {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.text-purple-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background: linear-gradient(90deg, #a855f7, #fbbf24);
+}
+
+.border-purple-gradient {
+  border-image: linear-gradient(135deg, #6b21a8, #4c1d95) 1;
+}
+
+.border-gold-gradient {
+  border-image: linear-gradient(135deg, #d97706, #b45309) 1;
 }

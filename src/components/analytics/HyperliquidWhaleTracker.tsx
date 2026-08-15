@@ -142,7 +142,7 @@ export const HyperliquidWhaleTracker: React.FC = () => {
               </div>
               <span className="text-sm text-slate-400">Loading whale transactions...</span>
             </div>
-          </div>
+          }
         ) : (
           <div className="space-y-3">
             {whaleTransactions.map((tx) => (
