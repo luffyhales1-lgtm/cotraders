@@ -98,7 +98,8 @@ const AdminPage: React.FC = () => {
         <Navbar />
         <main className="max-w-md mx-auto my-20 p-8 rounded-2xl bg-slate-900 border border-slate-800 text-center">
           <div className="h-16 w-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto mb-6">
-            <Lock className="h-9 w-9" />
+            {/* Replaced Lock icon with text to avoid Illegal constructor error */}
+            <span className="h-9 w-9 text-rose-400">LOCK</span>
           </div>
           <h2 className="text-2xl font-black text-slate-100">Restricted Admin Access</h2>
           <p className="text-xs text-slate-400 mt-2">
