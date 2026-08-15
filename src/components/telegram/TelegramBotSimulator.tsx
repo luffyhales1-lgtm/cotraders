@@ -15,7 +15,8 @@ import {
   ArrowRight,
   Shield,
   BarChart2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -289,7 +290,7 @@ export const TelegramBotSimulator: React.FC = () => {
                   <span className="font-mono">{c.pair}</span>
                   <span className="text-[10px] text-emerald-400 font-mono">${c.price < 10 ? c.price.toFixed(4) : c.price.toLocaleString()}</span>
                 </Button>
-              ))}
+              )}
             </div>
           </div>
         )}
