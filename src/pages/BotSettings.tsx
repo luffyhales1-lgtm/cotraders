@@ -236,8 +236,8 @@ const BotSettings: React.FC = () => {
             <strong>Note:</strong> Your bot must be started (send /start to it) before it can receive messages.
           </p>
         </div>
-      </main>
-    </>
+      </>
+    );
   );
 };
 
