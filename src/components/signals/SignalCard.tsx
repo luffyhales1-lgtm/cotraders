@@ -135,7 +135,8 @@ Platform: LiveTrading AI Pro`;
         {isLocked ? (
           <div className="relative py-8 px-6 bg-slate-950/85 rounded-xl border border-amber-500/30 text-center flex flex-col items-center justify-center my-4 backdrop-blur-sm">
             <div className="h-12 w-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-3">
-              <Lock className="h-7 w-7 text-amber-400" />
+              {/* Replaced Lock icon with text to avoid Illegal constructor error */}
+              <span className="h-7 w-7 text-amber-400">LOCK</span>
             </div>
             <h4 className="font-extrabold text-sm text-slate-100">VIP Exclusive AI Signal</h4>
             <p className="text-xs text-slate-400 mt-2 max-w-xs">
