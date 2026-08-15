@@ -5,16 +5,16 @@ import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { sendTpHitTelegramNotification } from '@/services/telegramService';
 import { generateLiveBacktestSummary, sendBacktestReportToTelegram } from '@/services/backtestService';
 import { StrategyName } from '@/types/trading';
-import { 
-  Bot, 
-  Zap, 
-  Send, 
-  Play, 
-  Pause, 
-  RefreshCw, 
-  CheckCircle2, 
-  Clock, 
-  Radio, 
+import {
+  Bot,
+  Zap,
+  Send,
+  Play,
+  Pause,
+  RefreshCw,
+  CheckCircle2,
+  Clock,
+  Radio,
   ShieldCheck,
   Flame,
   BarChart2,
@@ -52,23 +52,18 @@ const STRATEGIES: StrategyName[] = [
 
 export const AutoScannerService: React.FC = () => {
   const { telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
-  
-  const [isEnabled, setIsEnabled] = useState<boolean>(true);
-  const [countdown, setCountdown] = useState<number>(60);
+
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [totalScannedCount, setTotalScannedCount] = useState<number>(1048);
   const [lastScanTime, setLastScanTime] = useState<string>('Just now');
   const [logs, setLogs] = useState<AutoScanLog[]>([]);
   const [selectedLogForModal, setSelectedLogForModal] = useState<AutoScanLog | null>(null);
 
-  const countdownRef = useRef<number>(60);
-  const hourCounterRef = useRef<number>(0);
-
   // Immediate Backtest Report Handler
   const handleTriggerImmediateBacktest = async () => {
     toast.info('Compiling immediate backtest performance report...');
     const summary = generateLiveBacktestSummary('Immediate On-Demand Backtest');
-    
+
     if (telegramBotToken && telegramChatId) {
       const res = await sendBacktestReportToTelegram(telegramBotToken, telegramChatId, summary);
       if (res.success) toast.success('Immediate Backtesting Report sent to Telegram!');
@@ -78,7 +73,7 @@ export const AutoScannerService: React.FC = () => {
     }
   };
 
-  // Core scan execution function every 60s
+  // Core scan execution function (now manual only)
   const executeAutoScan = async () => {
     setIsScanning(true);
 
@@ -191,58 +186,25 @@ export const AutoScannerService: React.FC = () => {
       setLogs(prev => [newLog, ...prev].slice(0, 8));
       setLastScanTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
 
-      // Hourly Backtesting Auto Dispatcher (Every 60 scans = 1 hour)
-      hourCounterRef.current += 1;
-      if (hourCounterRef.current >= 60) {
-        hourCounterRef.current = 0;
-        const summary = generateLiveBacktestSummary(`Hourly Report (${new Date().toLocaleTimeString()})`);
-        if (telegramBotToken && telegramChatId) {
-          await sendBacktestReportToTelegram(telegramBotToken, telegramChatId, summary);
-        }
-      }
-
     } catch (err) {
       console.error('Auto-scan error:', err);
     } finally {
       setIsScanning(false);
-      setCountdown(60);
-      countdownRef.current = 60;
     }
   };
 
-  // Timer loop every 1 second
-  useEffect(() => {
-    if (!isEnabled) return;
-
-    const timer = setInterval(() => {
-      if (countdownRef.current <= 1) {
-        executeAutoScan();
-      } else {
-        countdownRef.current -= 1;
-        setCountdown(countdownRef.current);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isEnabled, telegramBotToken, telegramChatId]);
-
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-emerald-500/40 shadow-2xl text-slate-100 font-sans my-6 relative overflow-hidden">
-      
       {/* Glow pulse indicator */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
-        
         <div className="flex items-center gap-3">
           <div className="relative">
             <div className="h-11 w-11 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
-              <Radio className={`h-6 w-6 text-emerald-400 ${isEnabled ? 'animate-pulse' : ''}`} />
+              <Radio className={`h-6 w-6 text-emerald-400`} />
             </div>
-            {isEnabled && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-emerald-500 rounded-full border-2 border-slate-950 animate-ping" />
-            )}
           </div>
 
           <div>
@@ -261,9 +223,8 @@ export const AutoScannerService: React.FC = () => {
         {/* Controls & Immediate Backtest Trigger */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs flex items-center gap-2">
-            <Clock className="h-4 w-4 text-cyan-400" />
-            <span className="text-slate-400">Next Scan:</span>
-            <span className="font-extrabold text-emerald-400 text-sm">{isScanning ? 'SCANNING...' : `${countdown}s`}</span>
+            <span className="text-slate-400">Last Scan:</span>
+            <span className="font-extrabold text-emerald-400 text-sm">{isScanning ? 'SCANNING...' : lastScanTime}</span>
           </div>
 
           <Button
@@ -277,20 +238,6 @@ export const AutoScannerService: React.FC = () => {
           </Button>
 
           <Button
-            onClick={() => {
-              const nextState = !isEnabled;
-              setIsEnabled(nextState);
-              if (nextState) toast.success('1-Minute Auto-Scanner ENABLED');
-              else toast.info('Auto-Scanner Paused');
-            }}
-            variant={isEnabled ? 'default' : 'outline'}
-            className={isEnabled ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs gap-1.5' : 'border-slate-700 text-slate-300 text-xs font-bold gap-1.5'}
-          >
-            {isEnabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isEnabled ? 'Auto-Scan ON' : 'Paused'}
-          </Button>
-
-          <Button
             onClick={executeAutoScan}
             disabled={isScanning}
             size="sm"
@@ -301,7 +248,6 @@ export const AutoScannerService: React.FC = () => {
             Force Scan
           </Button>
         </div>
-
       </div>
 
       {/* Auto Scanner Status Stats */}
@@ -334,12 +280,12 @@ export const AutoScannerService: React.FC = () => {
             <Send className="h-3.5 w-3.5 text-indigo-400" />
             Live Dispatched Scalp Signals with Footprint Delta & TP Hit Alerts
           </span>
-          <span className="text-[10px] text-slate-500 font-mono">Updates automatically every 60s</span>
+          <span className="text-[10px] text-slate-500 font-mono">Updated on manual scan</span>
         </div>
 
         {logs.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-center text-xs text-slate-400 font-mono">
-            ⏳ Waiting for first 1-minute auto scan cycle... (Next scan in {countdown}s)
+            ⏳ No scans yet. Click "Force Scan" to start.
           </div>
         ) : (
           <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto scrollbar-none">
@@ -389,9 +335,9 @@ export const AutoScannerService: React.FC = () => {
               </Button>
             </div>
 
-            <img 
-              src={selectedLogForModal.chartImg} 
-              alt="Trade Setup Chart" 
+            <img
+              src={selectedLogForModal.chartImg}
+              alt="Trade Setup Chart"
               className="w-full rounded-xl border border-slate-800 shadow-lg"
             />
 
@@ -403,7 +349,6 @@ export const AutoScannerService: React.FC = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

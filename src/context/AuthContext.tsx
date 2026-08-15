@@ -2,6 +2,15 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, SubscriptionTier } from '@/types/trading';
 import { sendTelegramSignalNotification, TelegramSignalPayload } from '@/services/telegramService';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+// Simple UUID generator for demo purposes
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -26,8 +35,10 @@ const INSTAGRAM_URL = 'https://www.instagram.com/abdul_kaif12';
 const VIP_MONTHLY_PRICE = 49.90;
 const VIP_YEARLY_PRICE = 99.90;
 
+// Generate IDs for initial users
 const INITIAL_USERS: UserProfile[] = [
   {
+    id: generateUUID(),
     email: ADMIN_EMAIL,
     name: 'Master Admin (Abdul Kaif)',
     tier: 'vip_yearly',
@@ -37,6 +48,7 @@ const INITIAL_USERS: UserProfile[] = [
     isExpired: false,
   },
   {
+    id: generateUUID(),
     email: 'trader1@gmail.com',
     name: 'Alex Rivera',
     tier: 'vip_monthly',
@@ -67,13 +79,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : INITIAL_USERS;
   });
 
-  const [telegramBotToken, setTelegramBotToken] = useState<string>(() => {
-    return localStorage.getItem('livetrading_tg_token') || '';
-  });
-
-  const [telegramChatId, setTelegramChatId] = useState<string>(() => {
-    return localStorage.getItem('livetrading_tg_chatid') || '';
-  });
+  const [telegramBotToken, setTelegramBotToken] = useState<string>('');
+  const [telegramChatId, setTelegramChatId] = useState<string>('');
 
   useEffect(() => {
     if (user) {
@@ -84,9 +91,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('livetrading_all_users', JSON.stringify(allUsers));
-  }, [allUsers]);
-
+      localStorage.setItem('livetrading_all_users', JSON.stringify(allUsers));
+    }, [allUsers]);
+  
+    useEffect(() => {
+      if (user) {
+        fetchTelegramConfig();
+      } else {
+        setTelegramBotToken('');
+        setTelegramChatId('');
+      }
+    }, [user]);
+  
   // Subscription expiry check
   useEffect(() => {
     if (!user || user.tier === 'free') return;
@@ -107,13 +123,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const updateTelegramConfig = (token: string, chatId: string) => {
-    setTelegramBotToken(token);
-    setTelegramChatId(chatId);
-    localStorage.setItem('livetrading_tg_token', token);
-    localStorage.setItem('livetrading_tg_chatid', chatId);
-    toast.success('Telegram Bot Token and Chat ID updated successfully!');
-  };
+  const updateTelegramConfig = async (token: string, chatId: string) => {
+      if (!user) {
+        toast.error('User not logged in');
+        return;
+      }
+      try {
+        const { error } = await supabase
+                .from('telegram_configs')
+                .upsert(
+                  { user_id: user.id, bot_token: token, chat_id: chat_id },
+                  { onConflict: ['user_id'] }
+                );
+
+        if (error) {
+          throw error;
+        }
+
+        setTelegramBotToken(token);
+        setTelegramChatId(chatId);
+        toast.success('Telegram Bot Token and Chat ID updated successfully!');
+      } catch (err) {
+        console.error('Error updating telegram config:', err);
+        toast.error('Failed to update Telegram configuration');
+      }
+    };
 
   const dispatchTelegramSignal = async (signal: TelegramSignalPayload): Promise<boolean> => {
     if (!telegramBotToken || !telegramChatId) {
@@ -135,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = (email: string, pass: string): boolean => {
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
       const adminAcc: UserProfile = {
+        id: generateUUID(), // Generate a new ID for the admin session (or we could use the one from INITIAL_USERS)
         email: ADMIN_EMAIL,
         name: 'Master Admin (Abdul Kaif)',
         tier: 'vip_yearly',
@@ -156,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const newUser: UserProfile = {
+      id: generateUUID(),
       email,
       name: email.split('@')[0],
       tier: 'free',
@@ -176,29 +212,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUserSubscription = (email: string, tier: SubscriptionTier, durationDays: number) => {
-    const updated = allUsers.map(u => {
-      if (u.email.toLowerCase() === email.toLowerCase()) {
-        const now = new Date();
-        const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
-        return {
-          ...u,
-          tier,
-          isExpired: false,
-          subscriptionStart: now.toISOString(),
-          subscriptionEnd: endDate.toISOString(),
-        };
+      const updated = allUsers.map(u => {
+        if (u.email.toLowerCase() === email.toLowerCase()) {
+          const now = new Date();
+          const endDate = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+          return {
+            ...u,
+            tier,
+            isExpired: false,
+            subscriptionStart: now.toISOString(),
+            subscriptionEnd: endDate.toISOString(),
+          };
+        }
+        return u;
+      });
+
+      setAllUsers(updated);
+
+      if (user && user.email.toLowerCase() === email.toLowerCase()) {
+        const selfUpdated = updated.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (selfUpdated) setUser(selfUpdated);
       }
-      return u;
-    });
 
-    setAllUsers(updated);
+      toast.success(`Subscription for ${email} set to ${tier.toUpperCase()}`);
+    };
 
-    if (user && user.email.toLowerCase() === email.toLowerCase()) {
-      const selfUpdated = updated.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (selfUpdated) setUser(selfUpdated);
+  const fetchTelegramConfig = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('telegram_configs')
+        .select('bot_token, chat_id, auto_scan_enabled')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 means no rows returned
+        console.error('Error fetching telegram config:', error);
+        return;
+      }
+
+      if (data) {
+        setTelegramBotToken(data.bot_token || '');
+        setTelegramChatId(data.chat_id || '');
+        // We don't have auto_scan_enabled in the context, but we could add it if needed.
+        // For now, we only need bot_token and chat_id for the context.
+      } else {
+        // No config found, set to empty strings
+        setTelegramBotToken('');
+        setTelegramChatId('');
+      }
+    } catch (err) {
+      console.error('Error fetching telegram config:', err);
     }
-
-    toast.success(`Subscription for ${email} set to ${tier.toUpperCase()}`);
   };
 
   const isVipMember = !!(user && user.tier !== 'free');
