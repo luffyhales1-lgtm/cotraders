@@ -133,7 +133,7 @@ const Index: React.FC = () => {
             <span className="text-xs text-slate-400 block font-medium">GOLD (XAU/USD) LIVE</span>
             <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
               ${tickers.find(t => t.symbol === 'XAUUSDT')?.price.toFixed(2) || '2894.50'}
-            </span>
+            </span
             <span className="text-[11px] text-amber-400 font-bold flex items-center gap-1 mt-1">
               <TrendingUp className="h-3.5 w-3.5" /> Live Spot Metals Feed
             </span>
