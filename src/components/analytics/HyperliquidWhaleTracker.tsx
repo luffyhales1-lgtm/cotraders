@@ -142,7 +142,7 @@ export const HyperliquidWhaleTracker: React.FC = () => {
               </div>
               <span className="text-sm text-slate-400">Loading whale transactions...</span>
             </div>
-          }
+          </div>
         ) : (
           <div className="space-y-3">
             {whaleTransactions.map((tx) => (
@@ -160,17 +160,17 @@ export const HyperliquidWhaleTracker: React.FC = () => {
                       Wallet: <span className="font-mono">{tx.wallet}</span>
                     </p>
                   </div>
-                </div>
-                <div className="text-right space-y-1">
-                  <p className="font-bold text-slate-100">
-                    {tx.action === 'BUY' ? '+' : '-'}${tx.usdValue.toLocaleString()} USD
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {tx.amount} {tx.asset} @ ${tx.price.toLocaleString()}
-                  </p>
-                  <Badge className={tx.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}>
-                    {tx.action}
-                  </Badge>
+                  <div className="text-right space-y-1">
+                    <p className="font-bold text-slate-100">
+                      {tx.action === 'BUY' ? '+' : '-'}${tx.usdValue.toLocaleString()} USD
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {tx.amount} {tx.asset} @ ${tx.price.toLocaleString()}
+                    </p>
+                    <Badge className={tx.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}>
+                      {tx.action}
+                    </Badge>
+                  </div>
                 </div>
               </div>
             ))}
