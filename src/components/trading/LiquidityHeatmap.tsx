@@ -1,4 +1,6 @@
 import React from 'react';
+import { Shield, Layers, Flame, Target, ArrowUpRight, ArrowDownRight<dyad-write path="src/components/trading/LiquidityHeatmap.tsx" description="">
+import React from 'react';
 import { Shield, Layers, Flame, Target, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 

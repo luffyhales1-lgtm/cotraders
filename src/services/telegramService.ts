@@ -45,7 +45,7 @@ export async function sendTelegramSignalNotification(
   const delta = signal.footprintDelta || (isLong ? 1420 : -1420);
 
   const text = `
-🤖 <b>LIVETRADING AI - INSTITUTIONAL TRADE SETUP</b> 🤖
+🚀 <b>COTRADERS LIVE SIGNAL</b> 🚀
 ────────────────────────────
 <b>Pair / Asset:</b> <code>${signal.pair}</code>
 <b>Signal Action:</b> ${isLong ? '🚀 BUY / LONG' : '📉 SELL / SHORT'}

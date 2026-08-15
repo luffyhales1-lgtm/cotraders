@@ -35,7 +35,7 @@ export const Navbar: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-lg text-slate-100 tracking-tight">LIVE TRADING</span>
+              <span className="font-black text-lg text-slate-100 tracking-tight">COTRADERS</span>
               <span className="px-1.5 py-0.5 text-[10px] font-black rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI PRO</span>
             </div>
             <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold flex items-center gap-1">

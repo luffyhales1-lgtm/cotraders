@@ -166,7 +166,7 @@ const AdminPage: React.FC = () => {
             </div>
             <h1 className="text-3xl font-black text-slate-100 mt-2">Subscription & Telegram Dispatch Manager</h1>
             <p className="text-xs text-slate-400 mt-1">
-              Directly manage user VIP access ($49.90 / $99.90) and configure real-time Telegram signal broadcasting.
+              Directly manage user VIP access ($29.90 / $99.90) and configure real-time Telegram signal broadcasting.
             </p>
           </div>
 
@@ -208,7 +208,7 @@ const AdminPage: React.FC = () => {
                       onChange={(e) => setSelectedTier(e.target.value as SubscriptionTier)}
                       className="w-full p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-100 font-bold"
                     >
-                      <option value="vip_monthly">VIP Monthly ($49.90 / 30 Days)</option>
+                      <option value="vip_monthly">VIP Monthly ($29.90 / 30 Days)</option>
                       <option value="vip_yearly">VIP Yearly ($99.90 / 365 Days)</option>
                       <option value="free">Downgrade to Free</option>
                     </select>
@@ -304,7 +304,7 @@ const AdminPage: React.FC = () => {
                     Registered Users ({allUsers.length})
                   </span>
                   <Badge variant="outline" className="border-slate-800 text-slate-400 text-[10px]">
-                    Auto VIP Expiry Engine
+                    Active VIP Users: {allUsers.filter(u => u.tier !== 'free').length}
                   </Badge>
                 </CardTitle>
               </CardHeader>

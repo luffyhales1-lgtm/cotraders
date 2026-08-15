@@ -273,7 +273,7 @@ export const TelegramBotSimulator: React.FC = () => {
         {step === 'SELECT_COIN' && (
           <div className="p-5 rounded-2xl bg-slate-950 border border-cyan-500/40 space-y-3 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+              <span className="text-xs font-extrabod text-amber-400 flex items-center gap-1.5">
                 <Scan className="h-4 w-4" /> STEP 2: SELECT FUTURES ASSET ({selectedTimeframe})
               </span>
               <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-400">Binance Futures Live API</Badge>

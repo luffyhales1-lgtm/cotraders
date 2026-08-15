@@ -143,6 +143,57 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
   return generateGoldCandles(limit, symbol === 'BTCUSDT' ? 96940 : 250);
 }
 
+// Fetch Order Book from Binance Futures API
+export async function fetchOrderBook(symbol: string): Promise<{ bids: OrderBookItem[]; asks: OrderBookItem[] }> {
+  if (symbol === 'XAUUSDT' || symbol === 'EURUSD') {
+    return generateMockOrderBook(symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845);
+  }
+
+  try {
+    const res = await fetch(`${BINANCE_FUTURES_URL}/depth?symbol=${symbol}&limit=100`)
+      .catch(() => fetch(`${BINANCE_SPOT_URL}/depth?symbol=${symbol}&limit=100`));
+
+    if (res && res.ok) {
+      const data = await res.json();
+      
+      const bids: OrderBookItem[] = data.bids.slice(0, 10).map((bid: any) => ({
+        price: parseFloat(bid[0]),
+        amount: parseFloat(bid[1]),
+        total: 0 // Will be calculated below
+      }));
+      
+      const asks: OrderBookItem[] = data.asks.slice(0, 10).map((ask: any) => ({
+        price: parseFloat(ask[0]),
+        amount: parseFloat(ask[1]),
+        total: 0 // Will be calculated below
+      }));
+      
+      // Calculate cumulative totals
+      let bidTotal = 0;
+      for (let i = 0; i < bids.length; i++) {
+        bidTotal += bids[i].amount;
+        bids[i].total = bidTotal;
+      }
+      
+      let askTotal = 0;
+      for (let i = 0; i < asks.length; i++) {
+        askTotal += asks[i].amount;
+        asks[i].total = askTotal;
+      }
+      
+      return { bids, asks };
+    }
+  } catch (e) {
+    // fallback to mock data
+    const basePrice = symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845;
+    return generateMockOrderBook(basePrice);
+  }
+
+  // Fallback
+  const basePrice = symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845;
+  return generateMockOrderBook(basePrice);
+}
+
 // Subscribe to Binance Futures Real-Time WebSocket Stream
 export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string, number>) => void): () => void {
   let ws: WebSocket | null = null;

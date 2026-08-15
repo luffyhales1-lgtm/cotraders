@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchKlines, generateMockOrderBook, generateMockTrades } from '@/services/binanceApi';
+import { fetchKlines, fetchOrderBook, generateMockTrades } from '@/services/binanceApi';
 import { CandleData, OrderBookItem, LiveTrade } from '@/types/trading';
 import { 
   ResponsiveContainer, 
@@ -44,9 +44,10 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
     const loadChartData = async () => {
       setLoading(true);
       const data = await fetchKlines(symbol, timeframe, 40);
+      const orderBookData = await fetchOrderBook(symbol);
       if (active) {
         setCandles(data);
-        setOrderBook(generateMockOrderBook(currentPrice));
+        setOrderBook(orderBookData);
         setTrades(generateMockTrades(currentPrice));
         setLoading(false);
       }
@@ -56,8 +57,9 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
     const interval = setInterval(async () => {
       if (!active) return;
       const latest = await fetchKlines(symbol, timeframe, 40);
+      const orderBookData = await fetchOrderBook(symbol);
       setCandles(latest);
-      setOrderBook(generateMockOrderBook(currentPrice));
+      setOrderBook(orderBookData);
       setTrades(generateMockTrades(currentPrice));
     }, 4000);
 

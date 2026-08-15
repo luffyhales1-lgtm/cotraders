@@ -315,7 +315,7 @@ export const AutoScannerService: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 text-right">
-                  <span className="text-emerald-400 font-bold">{log.winProb}% Win</span>
+                  <span className="text-emerald-400 font-bold>{log.winProb}% Win</span>
                   <Button
                     size="sm"
                     variant="outline"
