@@ -75,8 +75,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>(() => {
-    const saved = localStorage.getItem('livetrading_all_users');
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
+    try {
+      const saved = localStorage.getItem('livetrading_all_users');
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch (error) {
+      console.error('Failed to parse allUsers from localStorage:', error);
+      return INITIAL_USERS;
+    }
   });
 
   const [telegramBotToken, setTelegramBotToken] = useState<string>('');
