@@ -129,7 +129,8 @@ const NewsPage: React.FC = () => {
                     {isLocked ? (
                       <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
                         <Button size="sm" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs gap-1">
-                          <Lock className="h-3 w-3" /> VIP Analysis Locked
+                          {/* Replaced Lock icon with text to avoid Illegal constructor error */}
+                          <span className="h-3 w-3 flex items-center justify-center text-amber-400">LOCK</span> VIP Analysis Locked
                         </Button>
                       </a>
                     ) : (
