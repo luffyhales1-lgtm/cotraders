@@ -6,12 +6,12 @@ import {
   LineChart, 
   Scan, 
   Newspaper, 
-  Instagram
+  Instagram,
+  Lock
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import Lock from 'lucide-react/dist/esm/icons/lock';
 
-export const MobileNav: React.FC = () => {
+const MobileNav: React.FC = () => {
   const location = useLocation();
   const { instagramUrl } = useAuth();
 
@@ -47,3 +47,5 @@ export const MobileNav: React.FC = () => {
     </div>
   );
 };
+
+export default MobileNav;
