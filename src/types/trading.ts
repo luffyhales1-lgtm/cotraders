@@ -59,8 +59,58 @@ export interface Signal {
   isScalp?: boolean;
   // Deep Institutional Parameters
   footprintDelta?: number; // e.g., +1420 CVD (Cumulative Volume Delta)
-  spoofingWall?: string; // e.g., \"Ask Wall $97,200 (Spoofing Detected)\"
-  liquidityWall?: string; // e.g., \"Bid Liquidity Wall $95,800 ($14.2M)\"
-  orderBlockZone?: string; // e.g., \"Bullish OB $96,100 - $96,400\"
-  demandSupplyZone?: string; // e.g., \"15m Institutional Demand Zone\"
-  ictPattern?: string; // e.g., \"Judas Swing & Liquidity Sweep\"\n  momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';\n}\n\nexport interface CandleData {\n  time: string;\n  open: number;\n  high: number;\n  low: number;\n  close: number;\n  volume: number;\n}\n\nexport interface OrderBookItem {\n  price: number;\n  amount: number;\n  total: number;\n}\n\nexport interface LiveTrade {\n  id: string;\n  price: number;\n  amount: number;\n  time: string;\n  type: 'buy' | 'sell';\n}\n\nexport interface MarketNews {\n  id: string;\n  title: string;\n  source: string;\n  time: string;\n  summary: string;\n  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';\n  impact: 'HIGH' | 'MEDIUM' | 'LOW';\n  isVipOnly: boolean;\n  url?: string;\n}\n\nexport interface BacktestSummary {\n  period: string;\n  totalTrades: number;\n  winningTrades: number;\n  losingTrades: number;\n  winRate: number;\n  totalPnLPercent: number;\n  totalPnLUsd: number;\n  bestTradePercent: number;\n  worstTradePercent: number;\n  timestamp: string;\n}\n
+  spoofingWall?: string; // e.g., "Ask Wall $97,200 (Spoofing Detected)"
+  liquidityWall?: string; // e.g., "Bid Liquidity Wall $95,800 ($14.2M)"
+  orderBlockZone?: string; // e.g., "Bullish OB $96,100 - $96,400"
+  demandSupplyZone?: string; // e.g., "15m Institutional Demand Zone"
+  ictPattern?: string; // e.g., "Judas Swing & Liquidity Sweep"
+  momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';
+}
+
+export interface CandleData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface OrderBookItem {
+  price: number;
+  amount: number;
+  total: number;
+}
+
+export interface LiveTrade {
+  id: string;
+  price: number;
+  amount: number;
+  time: string;
+  type: 'buy' | 'sell';
+}
+
+export interface MarketNews {
+  id: string;
+  title: string;
+  source: string;
+  time: string;
+  summary: string;
+  sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  impact: 'HIGH' | 'MEDIUM' | 'LOW';
+  isVipOnly: boolean;
+  url?: string;
+}
+
+export interface BacktestSummary {
+  period: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  totalPnLPercent: number;
+  totalPnLUsd: number;
+  bestTradePercent: number;
+  worstTradePercent: number;
+  timestamp: string;
+}

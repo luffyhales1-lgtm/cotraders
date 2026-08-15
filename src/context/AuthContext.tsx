@@ -132,8 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase
                 .from('telegram_configs')
                 .upsert(
-                  { user_id: user.id, bot_token: token, chat_id: chat_id },
-                  { onConflict: ['user_id'] }
+                  { user_id: user.id, bot_token: token, chat_id: chatId },
+                  { onConflict: 'user_id' }
                 );
 
         if (error) {
