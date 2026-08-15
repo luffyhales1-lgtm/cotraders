@@ -29,10 +29,10 @@ export class WhaleTrackerError extends Error {
   }
 }
 
-export async function fetchWhaleTrackerData(symbol?: string): Promise<WhaleTrackerResponse> {
+export async function fetchWhaleTrackerData(): Promise<WhaleTrackerResponse> {
   try {
     const response = await supabase.functions.invoke('coinglass-whale-tracker', {
-      body: { symbol },
+      body: {},
     });
 
     if (!response.data) {
