@@ -12,7 +12,6 @@ import {
   Send,
   Image as ImageIcon,
   ExternalLink,
-  Lock,
   Clock,
   Target
 } from 'lucide-react';
