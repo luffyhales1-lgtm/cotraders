@@ -76,19 +76,12 @@ const BotSettings: React.FC = () => {
 
     setLoading(true);
     try {
-      // Update bot token and chat ID
-      const { error: upsertError } = await supabase
-        .from('telegram_configs')
-        .upsert(
-          { user_id: user.id, bot_token: botToken, chat_id: chatId },
-          { onConflict: 'user_id' }
-        );
+      // Save through AuthContext so the rest of the app (Force Scan, Signals,
+      // Dispatch, etc.) immediately sees the updated token/chat ID too —
+      // no logout/login needed.
+      await updateTelegramConfig(botToken, chatId);
 
-      if (upsertError) {
-        throw upsertError;
-      }
-
-      // Update auto-scan enabled
+      // Auto-scan flag isn't tracked in context, so update it directly
       const { error: updateError } = await supabase
         .from('telegram_configs')
         .update({ auto_scan_enabled: autoScanEnabled })
@@ -97,8 +90,6 @@ const BotSettings: React.FC = () => {
       if (updateError) {
         throw updateError;
       }
-
-      toast.success('Bot configuration saved successfully!');
     } catch (err) {
       console.error('Error saving bot configuration:', err);
       toast.error('Failed to save bot configuration');
