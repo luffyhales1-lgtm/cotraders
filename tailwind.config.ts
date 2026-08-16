@@ -101,10 +101,30 @@ export default {
             height: "0",
           },
         },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "float-slow": "float-slow 6s ease-in-out infinite",
+        shimmer: "shimmer 3s linear infinite",
+      },
+      boxShadow: {
+        "glow-sm": "0 0 12px 0 hsl(var(--glow-primary) / 0.35)",
+        glow: "0 0 24px 2px hsl(var(--glow-primary) / 0.4)",
+        "glow-lg": "0 0 48px 4px hsl(var(--glow-primary) / 0.45)",
+        depth: "0 20px 40px -20px hsl(260 60% 2% / 0.75), 0 1px 0 0 hsl(270 60% 70% / 0.08) inset",
+      },
+      backgroundImage: {
+        "radial-fade": "radial-gradient(ellipse at center, hsl(var(--glow-primary) / 0.25), transparent 70%)",
+        "shimmer-line": "linear-gradient(90deg, transparent, hsl(var(--glow-primary) / 0.5), transparent)",
       },
     },
   },

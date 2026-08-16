@@ -65,17 +65,18 @@ export const Navbar: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-[10px] border-b border-slate-800/90 px-4 lg:px-8 py-3 transition-all duration-300">
+    <header className="sticky top-0 z-50 bg-[hsl(258_45%_6%/0.85)] backdrop-blur-xl border-b border-white/[0.06] px-4 lg:px-8 py-3 transition-all duration-300 shadow-[0_1px_0_0_hsl(270_60%_70%/0.06)_inset,0_20px_40px_-30px_hsl(260_60%_2%/0.9)]">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-300">
-            <Activity className="h-6 w-6 text-slate-950 font-black" />
+          <div className="relative h-11 w-11 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-600 flex items-center justify-center shadow-[0_8px_24px_-6px_hsl(268_92%_62%/0.6)] group-hover:scale-105 transition-transform duration-300">
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-white/20" />
+            <Activity className="h-6 w-6 text-white drop-shadow" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-lg text-slate-100 tracking-tight">COTRADERS</span>
-              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">AI PRO</span>
+              <span className="font-black text-lg text-white tracking-tight">COTRADERS</span>
+              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/30">AI PRO</span>
             </div>
             <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold flex items-center gap-1">
               <Radio className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
@@ -90,14 +91,14 @@ export const Navbar: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="gap-2 text-xs font-bold border-slate-700 text-slate-200 hover:bg-slate-800 transition-all duration-300"
+            className="gap-2 text-xs font-bold text-slate-200"
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             Menu
           </Button>
 
           {menuOpen && (
-            <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl shadow-black/40 overflow-hidden z-50">
+            <div className="absolute left-0 mt-2 w-72 glass-panel rounded-2xl overflow-hidden z-50">
               <div className="py-2">
                 {NAV_ITEMS.map((item) => {
                   const Icon = item.icon;
@@ -107,8 +108,8 @@ export const Navbar: React.FC = () => {
                       <div
                         className={`flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors duration-150 ${
                           isActive(item.path)
-                            ? 'bg-slate-800 text-slate-100'
-                            : 'text-slate-300 hover:bg-slate-800/70 hover:text-white'
+                            ? 'bg-violet-500/10 text-white'
+                            : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
                         }`}
                       >
                         <span className="flex items-center gap-3">
@@ -124,7 +125,7 @@ export const Navbar: React.FC = () => {
                 {user?.isAdmin && (
                   <Link to="/admin" onClick={() => setMenuOpen(false)}>
                     <div
-                      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold border-t border-slate-800 mt-1 pt-3 transition-colors duration-150 ${
+                      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold border-t border-white/[0.06] mt-1 pt-3 transition-colors duration-150 ${
                         isActive('/admin')
                           ? 'bg-amber-500/10 text-amber-300'
                           : 'text-amber-400 hover:bg-amber-500/10'
@@ -142,10 +143,10 @@ export const Navbar: React.FC = () => {
 
         {/* Right Action */}
         <div className="flex items-center gap-4">
-          
+
           {!isVipMember && (
             <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" className="hidden sm:flex gap-2 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-black text-xs hover:opacity-95 shadow-md shadow-amber-500/20 transition-all duration-300">
+              <Button size="sm" className="hidden sm:flex gap-2 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-black text-xs hover:opacity-95 shadow-[0_8px_24px_-8px_hsl(38_92%_50%/0.6)] transition-all duration-300">
                 <Crown className="h-5 w-5" />
                 Subscribe VIP Access
               </Button>
@@ -153,7 +154,7 @@ export const Navbar: React.FC = () => {
           )}
 
           {user ? (
-            <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
+            <div className="flex items-center gap-3 pl-3 border-l border-white/[0.06]">
               <div className="text-right hidden sm:block">
                 <div className="flex items-center justify-end gap-2">
                   <span className="text-xs font-bold text-slate-200">{user.name}</span>
@@ -168,13 +169,13 @@ export const Navbar: React.FC = () => {
                 <p className="text-[10px] text-slate-400">{user.email}</p>
               </div>
 
-              <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="text-slate-400 hover:text-rose-400 hover:bg-slate-900/20 transition-all duration-200">
+              <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="text-slate-400 hover:text-rose-400 transition-all duration-200">
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
           ) : (
             <Link to="/login">
-              <Button size="sm" variant="outline" className="gap-2.5 text-xs font-bold border-slate-700 text-slate-200 hover:bg-slate-800 transition-all duration-300">
+              <Button size="sm" variant="outline" className="gap-2.5 text-xs font-bold text-slate-200">
                 <LogIn className="h-5 w-5 text-emerald-400" />
                 Log In
               </Button>

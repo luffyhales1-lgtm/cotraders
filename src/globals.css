@@ -4,38 +4,65 @@
 
 @layer base {
   :root {
-    --background: 262 60% 5%; /* Deep purple background */
-    --foreground: 210 40% 98%; /* Light text */
+    --background: 260 55% 4%;         /* near-black violet */
+    --foreground: 260 20% 96%;
 
-    --card: 262 60% 5%;
-    --card-foreground: 210 40% 98%;
+    --card: 258 45% 8%;
+    --card-foreground: 260 15% 95%;
 
-    --popover: 262 60% 5%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 258 48% 7%;
+    --popover-foreground: 260 15% 95%;
 
-    --primary: 262 80% 40%; /* Rich purple */
-    --primary-foreground: 210 40% 98%;
+    --primary: 268 92% 62%;           /* electric violet */
+    --primary-foreground: 260 15% 98%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 258 30% 14%;
+    --secondary-foreground: 260 15% 92%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 258 25% 13%;
+    --muted-foreground: 258 12% 62%;
 
-    --accent: 45 60% 50%; /* Gold accent */
-    --accent-foreground: 210 40% 98%;
+    --accent: 271 91% 68%;
+    --accent-foreground: 260 15% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --radius: 0.75rem;
+    --border: 258 35% 18%;
+    --input: 258 35% 16%;
+    --ring: 268 92% 62%;
+    --radius: 1rem;
+
+    /* theme tokens used by 3D/glass utilities below */
+    --glow-primary: 268 92% 62%;
+    --glow-secondary: 285 85% 65%;
+    --surface-1: 258 45% 9%;
+    --surface-2: 258 40% 12%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at 15% 0%, hsl(268 70% 22% / 0.35), transparent 45%),
+      radial-gradient(circle at 85% 15%, hsl(285 70% 20% / 0.28), transparent 40%),
+      radial-gradient(circle at 50% 100%, hsl(260 60% 12% / 0.6), transparent 60%);
+    background-attachment: fixed;
+  }
+}
+
+@layer base {
+  /* subtle noise/grid so flat panels don't read as flat */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+      linear-gradient(hsl(270 60% 60% / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(270 60% 60% / 0.05) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 80%);
   }
 }
 
@@ -85,4 +112,114 @@
 
 .border-gold-gradient {
   border-image: linear-gradient(135deg, #d97706, #b45309) 1;
+}
+
+/* ============================================================
+   3D GLASS THEME SYSTEM
+   ============================================================ */
+
+/* Base glass panel — layered gradient + inner highlight + outer glow shadow.
+   This is what gives flat cards a sense of depth without any 3D engine. */
+.glass-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, hsl(var(--surface-2) / 0.9), hsl(var(--surface-1) / 0.85));
+  border: 1px solid hsl(var(--border) / 0.8);
+  border-radius: var(--radius);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow:
+    0 1px 0 0 hsl(270 60% 70% / 0.08) inset,
+    0 -20px 40px -30px hsl(var(--glow-primary) / 0.25) inset,
+    0 20px 40px -20px hsl(260 60% 2% / 0.7),
+    0 0 0 1px hsl(260 60% 2% / 0.4);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.glass-panel::before {
+  /* top hairline sheen */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, hsl(var(--glow-primary) / 0.35), transparent 30%, transparent 70%, hsl(var(--glow-secondary) / 0.25));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Hover lift — the "3D" tilt-and-rise effect used across cards */
+.glass-panel-interactive {
+  cursor: pointer;
+}
+.glass-panel-interactive:hover {
+  transform: translateY(-4px) scale(1.005);
+  border-color: hsl(var(--glow-primary) / 0.5);
+  box-shadow:
+    0 1px 0 0 hsl(270 60% 70% / 0.12) inset,
+    0 -20px 40px -30px hsl(var(--glow-primary) / 0.35) inset,
+    0 30px 60px -20px hsl(260 60% 2% / 0.85),
+    0 0 40px -8px hsl(var(--glow-primary) / 0.35);
+}
+
+/* Glow ring — for badges, status dots, active nav items */
+.glow-ring {
+  box-shadow: 0 0 0 1px hsl(var(--glow-primary) / 0.4), 0 0 18px 2px hsl(var(--glow-primary) / 0.35);
+}
+
+/* Glowing gradient button surface */
+.btn-glow {
+  background: linear-gradient(135deg, hsl(268 92% 62%), hsl(285 85% 55%));
+  box-shadow:
+    0 1px 0 0 hsl(270 90% 85% / 0.4) inset,
+    0 8px 24px -8px hsl(var(--glow-primary) / 0.6);
+  transition: box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+}
+.btn-glow:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    0 1px 0 0 hsl(270 90% 85% / 0.5) inset,
+    0 10px 30px -6px hsl(var(--glow-primary) / 0.75);
+  transform: translateY(-1px);
+}
+
+/* Floating orb / ambient light blob — decorative background element */
+.ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: orb-float 10s ease-in-out infinite;
+}
+
+@keyframes orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(0, -18px) scale(1.05); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+.animate-glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* Numeric/stat text with a subtle glow, for headline KPIs */
+.text-glow-primary {
+  color: hsl(var(--glow-primary));
+  text-shadow: 0 0 18px hsl(var(--glow-primary) / 0.55);
+}
+.text-glow-emerald {
+  color: hsl(152 76% 55%);
+  text-shadow: 0 0 18px hsl(152 76% 45% / 0.5);
+}
+
+/* Section divider with center glow, matches reference site's rules */
+.divider-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, hsl(var(--glow-primary) / 0.6), transparent);
 }
