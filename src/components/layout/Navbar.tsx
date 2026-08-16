@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
- 
+
 interface NavItem {
   path: string;
   label: string;
@@ -30,7 +30,7 @@ interface NavItem {
   vipOnly?: boolean;
   adminOnly?: boolean;
 }
- 
+
 const NAV_ITEMS: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: TrendingUp, iconColor: 'text-emerald-400' },
   { path: '/signals', label: 'AI Signals', icon: Sparkles, iconColor: 'text-cyan-400', vipOnly: true },
@@ -41,15 +41,15 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/bot-settings', label: 'Bot Settings', icon: Settings, iconColor: 'text-teal-400', vipOnly: true },
   { path: '/pricing', label: 'VIP Plans', icon: Crown, iconColor: 'text-amber-400' },
 ];
- 
+
 export const Navbar: React.FC = () => {
   const { user, logout, instagramUrl, isVipMember } = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
- 
+
   const isActive = (path: string) => location.pathname === path;
- 
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -59,11 +59,11 @@ export const Navbar: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
- 
+
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
- 
+
   return (
     <header className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-[10px] border-b border-slate-800/90 px-4 lg:px-8 py-3 transition-all duration-300">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -83,7 +83,7 @@ export const Navbar: React.FC = () => {
             </p>
           </div>
         </Link>
- 
+
         {/* Menu Button + Dropdown */}
         <div className="relative" ref={menuRef}>
           <Button
@@ -95,7 +95,7 @@ export const Navbar: React.FC = () => {
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             Menu
           </Button>
- 
+
           {menuOpen && (
             <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl shadow-black/40 overflow-hidden z-50">
               <div className="py-2">
@@ -120,7 +120,7 @@ export const Navbar: React.FC = () => {
                     </Link>
                   );
                 })}
- 
+
                 {user?.isAdmin && (
                   <Link to="/admin" onClick={() => setMenuOpen(false)}>
                     <div
@@ -139,17 +139,19 @@ export const Navbar: React.FC = () => {
             </div>
           )}
         </div>
- 
+
         {/* Right Action */}
         <div className="flex items-center gap-4">
           
-          <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" className="hidden sm:flex gap-2 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-black text-xs hover:opacity-95 shadow-md shadow-amber-500/20 transition-all duration-300">
-              <Crown className="h-5 w-5" />
-              Subscribe VIP Access
-            </Button>
-          </a>
- 
+          {!isVipMember && (
+            <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" className="hidden sm:flex gap-2 bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-black text-xs hover:opacity-95 shadow-md shadow-amber-500/20 transition-all duration-300">
+                <Crown className="h-5 w-5" />
+                Subscribe VIP Access
+              </Button>
+            </a>
+          )}
+
           {user ? (
             <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
               <div className="text-right hidden sm:block">
@@ -165,7 +167,7 @@ export const Navbar: React.FC = () => {
                 </div>
                 <p className="text-[10px] text-slate-400">{user.email}</p>
               </div>
- 
+
               <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="text-slate-400 hover:text-rose-400 hover:bg-slate-900/20 transition-all duration-200">
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -178,11 +180,11 @@ export const Navbar: React.FC = () => {
               </Button>
             </Link>
           )}
- 
+
         </div>
       </div>
     </header>
   );
 };
- 
+
 export default Navbar;

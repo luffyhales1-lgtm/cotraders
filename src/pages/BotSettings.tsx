@@ -13,12 +13,7 @@ import {
   ArrowRight,
   Crown,
   LogOut,
-  Settings,
-  Menu,
-  TrendingUp,
-  Sparkles,
-  LineChart,
-  Scan
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +23,6 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 const BotSettings: React.FC = () => {
   const { user, updateTelegramConfig, isVipMember, logout } = useAuth();
@@ -50,9 +44,9 @@ const BotSettings: React.FC = () => {
         .from('telegram_configs')
         .select('bot_token, chat_id, auto_scan_enabled')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching telegram config:', error);
         toast.error('Failed to load your bot configuration');
         return;
@@ -142,47 +136,9 @@ const BotSettings: React.FC = () => {
     <>
       <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
         <span className="text-slate-400">{user.email}</span>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Menu className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem>
-                <Link to="/" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
-                  <TrendingUp className="mr-2 h-4 w-4" /> Home
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link to="/signals" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
-                  <Sparkles className="mr-2 h-4 w-4" /> Signals
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link to="/charts" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
-                  <LineChart className="mr-2 h-4 w-4" /> Terminal
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link to="/scanner" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100">
-                  <Scan className="mr-2 h-4 w-4" /> Scanner
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Link to="/bot-settings" className="flex items-center w-full px-2 py-2 text-slate-800 hover:bg-slate-100 font-bold">
-                  <Settings className="mr-2 h-4 w-4" /> Bots
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem className="border-t">
-                <Button onClick={logout} variant="ghost" size="icon" className="w-full justify-start px-2 py-2 text-slate-400">
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-                </Button>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <Button onClick={logout} variant="ghost" size="icon" title="Logout">
+          <LogOut className="h-5 w-5" />
+        </Button>
       </div>
       <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
         <CardHeader>
