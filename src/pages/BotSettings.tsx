@@ -13,7 +13,8 @@ import {
   ArrowRight,
   Crown,
   LogOut,
-  Settings
+  Settings,
+  Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Menu } from 'lucide-react';
 
 const BotSettings: React.FC = () => {
   const { user, updateTelegramConfig, isVipMember, logout } = useAuth();
