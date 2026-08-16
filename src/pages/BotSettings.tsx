@@ -14,8 +14,11 @@ import {
   Crown,
   LogOut,
   Settings,
+  Menu,
   TrendingUp,
-  Menu
+  Sparkles,
+  LineChart,
+  Scan
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
