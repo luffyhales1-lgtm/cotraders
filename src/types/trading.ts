@@ -27,15 +27,28 @@ export interface CoinTicker {
 
 export type SignalType = 'LONG' | 'SHORT';
 export type SignalStatus = 'ACTIVE' | 'HIT_TP1' | 'HIT_TP2' | 'HIT_TP3' | 'STOP_LOSS' | 'PENDING';
-export type StrategyName = 
-  | 'SMC Order Block' 
-  | 'EMA 20/200 Golden Cross' 
-  | 'RSI Bullish Divergence' 
-  | 'MACD Trend Impulse' 
-  | 'Supertrend Breakout' 
-  | 'Volume Profile Rejection'
-  | 'Footprint Delta & Spoofing Sweep'
-  | 'ICT Liquidity Pool Grab';
+export type StrategyName =
+  | 'Triple EMA Pullback'
+  | 'Hyper Scalper'
+  | 'VWAP Bounce'
+  | 'BB Squeeze Breakout'
+  | 'ICT Rejection Block'
+  | 'Liquidity Sweep'
+  | 'Fair Value Gap (FVG)'
+  | 'Market Structure Shift'
+  | 'Order Block + StochRSI'
+  | 'RSI Divergence'
+  | 'MACD Cross + Histogram'
+  | 'Mean Reversion (BB)'
+  | 'Golden/Death Cross'
+  | 'Pin Bar / Hammer'
+  | 'Range Breakout'
+  | 'Supply/Demand Zone'
+  | 'Fibonacci Golden Zone'
+  | 'Wyckoff Spring/Upthrust'
+  | 'Squeeze Momentum (TTM)'
+  | 'Quasimodo (QM)'
+  | 'Darvas Box';
 
 export interface Signal {
   id: string;
@@ -65,6 +78,11 @@ export interface Signal {
   demandSupplyZone?: string; // e.g., "15m Institutional Demand Zone"
   ictPattern?: string; // e.g., "Judas Swing & Liquidity Sweep"
   momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';
+  // Honest metadata from the real walk-forward backtest -- may be null/low
+  // sample size, and that is reported truthfully rather than hidden.
+  backtestSampleSize?: number;
+  backtestLabel?: string;
+  momentumNote?: string;
 }
 
 export interface CandleData {
@@ -74,6 +92,20 @@ export interface CandleData {
   low: number;
   close: number;
   volume: number;
+  takerBuyVolume?: number; // real Binance kline field, used for volume-delta approximation
+}
+
+export type StrategyCategory = 'TREND' | 'REVERSAL' | 'BREAKOUT' | 'ICT/SMC';
+
+export interface StrategyResult {
+  name: string;
+  category: StrategyCategory;
+  triggered: boolean;
+  direction: 'LONG' | 'SHORT' | null;
+  reason: string;
+  // Historical backtested win rate for this strategy on this symbol/timeframe,
+  // computed by walking forward over real candles — not invented.
+  backtestWinRate?: number;
 }
 
 export interface OrderBookItem {
