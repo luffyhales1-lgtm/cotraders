@@ -12,14 +12,67 @@ import {
   Zap, 
   ShieldCheck, 
   HelpCircle,
-  MessageCircle
+  MessageCircle,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const PricingPage: React.FC = () => {
-  const { instagramUrl, vipMonthlyPrice, vipYearlyPrice } = useAuth();
+  const { instagramUrl, vipMonthlyPrice, vipYearlyPrice, isVipMember, user } = useAuth();
+
+  // Active VIP members shouldn't see pricing/subscribe CTAs at all —
+  // isVipMember is computed live off subscription_end, so this flips
+  // back to false (and this page back to normal) automatically the
+  // moment their subscription lapses, no manual admin step needed.
+  if (isVipMember && user) {
+    const endDate = user.subscriptionEnd ? new Date(user.subscriptionEnd) : null;
+    const daysLeft = endDate ? Math.max(0, Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : null;
+
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+        <TickerTape />
+        <Navbar />
+        <main className="max-w-3xl mx-auto px-4 lg:px-8 py-16">
+          <Card className="bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-900 border-amber-500/50 text-slate-100 overflow-hidden shadow-2xl">
+            <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black text-center py-1 uppercase tracking-widest">
+              Active Subscription
+            </div>
+            <CardHeader className="text-center">
+              <Badge className="w-fit mx-auto bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] mb-2">
+                <Crown className="h-3 w-3 mr-1 text-amber-400" /> {user.tier === 'yearly' ? 'YEARLY PRO VIP' : 'MONTHLY VIP'}
+              </Badge>
+              <CardTitle className="text-3xl font-black">You're all set, {user.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6 text-center pb-10">
+              <p className="text-sm text-slate-400">
+                Your VIP access is active. All 1,000+ pair scanning, AI signals, gold setups, and full news are unlocked.
+              </p>
+              {endDate && (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm">
+                  <CalendarClock className="h-4 w-4 text-amber-400" />
+                  <span className="text-slate-300">
+                    Renews / expires on <span className="font-bold text-slate-100">{endDate.toLocaleDateString()}</span>
+                    {daysLeft !== null && <span className="text-slate-500"> · {daysLeft} day{daysLeft === 1 ? '' : 's'} left</span>}
+                  </span>
+                </div>
+              )}
+              <p className="text-xs text-slate-500">
+                When your subscription ends, your account automatically reverts to the Free tier — no action needed. You'll see this pricing page again once that happens if you want to renew.
+              </p>
+              <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="inline-block">
+                <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800 font-bold text-xs py-5 gap-2">
+                  <Instagram className="h-4 w-4" /> Contact Support / Renew Early
+                </Button>
+              </a>
+            </CardContent>
+          </Card>
+        </main>
+        <MobileNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
