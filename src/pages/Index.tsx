@@ -9,7 +9,7 @@ import { RiskCalculator } from '@/components/trading/RiskCalculator';
 import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
 import { AutoScannerService } from '@/components/telegram/AutoScannerService';
 import { fetchTopCryptos, subscribeBinanceTickerStream } from '@/services/binanceApi';
-import { generateLiveSignals } from '@/services/signalEngine';
+import { scanMarketForSignals } from '@/services/signalEngine';
 import { CoinTicker, Signal } from '@/types/trading';
 import { useAuth } from '@/context/AuthContext';
 import { 
@@ -43,7 +43,8 @@ const Index: React.FC = () => {
       if (!isSubscribed) return;
       setTickers(data);
       if (data.length > 0) setSelectedCoin(data[0]);
-      setSignals(generateLiveSignals());
+      const live = await scanMarketForSignals();
+      if (isSubscribed) setSignals(live);
     };
 
     loadInitial();
