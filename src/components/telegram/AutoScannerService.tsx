@@ -65,6 +65,8 @@ export const AutoScannerService: React.FC = () => {
 
   const isVipWithBot = isVipMember && telegramBotToken && telegramChatId;
   const trackedTradesRef = useRef<Map<string, Signal & { hitTp1: boolean; hitTp2: boolean }>>(new Map());
+  const nextScanAtRef = useRef<number>(Date.now() + SCAN_INTERVAL_MS);
+  const [countdownSec, setCountdownSec] = useState<number>(SCAN_INTERVAL_MS / 1000);
 
   const toggleAutoScan = () => {
     setAutoScanEnabled(prev => {
@@ -244,10 +246,27 @@ export const AutoScannerService: React.FC = () => {
   // Real 1-minute auto-scan loop.
   useEffect(() => {
     if (!autoScanEnabled) return;
-    executeAutoScan();
-    const id = setInterval(executeAutoScan, SCAN_INTERVAL_MS);
+    const runAndSchedule = () => {
+      nextScanAtRef.current = Date.now() + SCAN_INTERVAL_MS;
+      executeAutoScan();
+    };
+    runAndSchedule();
+    const id = setInterval(runAndSchedule, SCAN_INTERVAL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScanEnabled]);
+
+  // Countdown ticker -- purely visual, reads the same clock the scan
+  // loop above uses so "Next scan in Xs" is always accurate to it.
+  useEffect(() => {
+    if (!autoScanEnabled) { setCountdownSec(0); return; }
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((nextScanAtRef.current - Date.now()) / 1000));
+      setCountdownSec(remaining);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, [autoScanEnabled]);
 
   // Automatic hourly backtest report so it goes out even if the user never
@@ -292,6 +311,13 @@ export const AutoScannerService: React.FC = () => {
           <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono text-xs flex items-center gap-2">
             <span className="text-slate-400">Last Scan:</span>
             <span className="font-extrabold text-emerald-400 text-sm">{isScanning ? 'SCANNING...' : lastScanTime}</span>
+          </div>
+
+          <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono text-xs flex items-center gap-2">
+            <span className="text-slate-400">Next Scan:</span>
+            <span className="font-extrabold text-cyan-400 text-sm tabular-nums">
+              {autoScanEnabled ? (isScanning ? '—' : `${countdownSec}s`) : 'paused'}
+            </span>
           </div>
 
           <Button
