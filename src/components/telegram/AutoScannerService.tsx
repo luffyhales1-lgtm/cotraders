@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { fetchTopCryptos } from '@/services/binanceApi';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { sendTpHitTelegramNotification } from '@/services/telegramService';
 import { generateLiveBacktestSummary, sendBacktestReportToTelegram } from '@/services/backtestService';
-import { StrategyName } from '@/types/trading';
+import { scanMarketForSignals, describeMomentum, DEFAULT_SCAN_WATCHLIST } from '@/services/signalEngine';
+import { fetchKlines } from '@/services/binanceApi';
+import { rsi, macd } from '@/services/indicators';
+import { Signal } from '@/types/trading';
 import {
-  Bot,
-  Zap,
   Send,
-  Play,
-  Pause,
   RefreshCw,
   CheckCircle2,
-  Clock,
   Radio,
-  ShieldCheck,
   Flame,
   BarChart2,
   Image as ImageIcon
@@ -41,177 +37,204 @@ interface AutoScanLog {
   dispatchedToTelegram: boolean;
 }
 
-const STRATEGIES: StrategyName[] = [
-  'SMC Order Block',
-  'Footprint Delta & Spoofing Sweep',
-  'ICT Liquidity Pool Grab',
-  'EMA 20/200 Golden Cross',
-  'RSI Bullish Divergence',
-  'MACD Trend Impulse'
-];
+const SCAN_INTERVAL_MS = 60 * 1000; // real 1-minute auto-scan
+const BACKTEST_INTERVAL_MS = 60 * 60 * 1000; // auto-send backtest report hourly in case the user forgets
 
 export const AutoScannerService: React.FC = () => {
-  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
+  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal, isVipMember } = useAuth();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [totalScannedCount, setTotalScannedCount] = useState<number>(1048);
-  const [lastScanTime, setLastScanTime] = useState<string>('Just now');
+  const [totalScannedCount] = useState<number>(DEFAULT_SCAN_WATCHLIST.length);
+  const [lastScanTime, setLastScanTime] = useState<string>('Not yet run');
   const [logs, setLogs] = useState<AutoScanLog[]>([]);
   const [selectedLogForModal, setSelectedLogForModal] = useState<AutoScanLog | null>(null);
+  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(true);
 
-  // Check if user is VIP and has set up bot
-  const isVipWithBot = user && user.tier !== 'free' && telegramBotToken && telegramChatId;
+  const isVipWithBot = isVipMember && telegramBotToken && telegramChatId;
+  const trackedTradesRef = useRef<Map<string, Signal & { hitTp1: boolean; hitTp2: boolean }>>(new Map());
 
-  // Immediate Backtest Report Handler
   const handleTriggerImmediateBacktest = async () => {
     if (!isVipWithBot) {
-      toast.error('Only VIP members with configured Telegram bot can use this feature.');
+      toast.error('Only VIP members with a configured Telegram bot can use this feature.');
       return;
     }
-
-    toast.info('Compiling immediate backtest performance report...');
-    const summary = generateLiveBacktestSummary('Immediate On-Demand Backtest');
+    toast.info('Running real walk-forward backtest against live historical candles...');
+    const summary = await generateLiveBacktestSummary('Immediate On-Demand Backtest');
 
     if (telegramBotToken && telegramChatId) {
       const res = await sendBacktestReportToTelegram(telegramBotToken, telegramChatId, summary);
-      if (res.success) toast.success('Immediate Backtesting Report sent to Telegram!');
+      if (res.success) toast.success('Backtest report sent to Telegram!');
       else toast.error(res.message);
     } else {
-      toast.success(`Backtest Complete! Win Rate: ${summary.winRate}% | Net PnL: +${summary.totalPnLPercent}%`);
+      toast.success(summary.totalTrades > 0
+        ? `Backtest complete: ${summary.winRate}% win rate over ${summary.totalTrades} real simulated trades.`
+        : 'Backtest complete: not enough triggered trades in this window yet.');
     }
   };
 
-  // Core scan execution function (now manual only)
+  // Poll an open trade's real price against its real TP1/TP2/TP3/SL levels
+  // and send a notification driven by a genuine momentum read when a level
+  // is actually crossed -- not a timer-based fake alert.
+  const monitorTradeForTpHits = (signal: Signal) => {
+    trackedTradesRef.current.set(signal.id, { ...signal, hitTp1: false, hitTp2: false });
+
+    const interval = setInterval(async () => {
+      const tracked = trackedTradesRef.current.get(signal.id);
+      if (!tracked) { clearInterval(interval); return; }
+
+      try {
+        const candles = await fetchKlines(signal.symbol, '5m', 60);
+        if (candles.length < 30) return;
+        const lastClose = candles[candles.length - 1].close;
+        const closes = candles.map(c => c.close);
+        const rsiSeries = rsi(closes, 14);
+        const macdRes = macd(closes);
+        const i = candles.length - 1;
+        const momentum = describeMomentum(tracked.type, rsiSeries[i], macdRes.histogram[i], macdRes.histogram[i - 1]);
+
+        const isLong = tracked.type === 'LONG';
+        const hitSl = isLong ? lastClose <= tracked.stopLoss : lastClose >= tracked.stopLoss;
+        const hitTp3 = isLong ? lastClose >= tracked.target3 : lastClose <= tracked.target3;
+        const hitTp2 = !tracked.hitTp2 && (isLong ? lastClose >= tracked.target2 : lastClose <= tracked.target2);
+        const hitTp1 = !tracked.hitTp1 && (isLong ? lastClose >= tracked.target1 : lastClose <= tracked.target1);
+
+        if (hitSl) {
+          if (telegramBotToken && telegramChatId) await sendTpHitTelegramNotification(telegramBotToken, telegramChatId, tracked.pair, 'SL', lastClose, momentum);
+          trackedTradesRef.current.delete(signal.id);
+          clearInterval(interval);
+        } else if (hitTp3) {
+          if (telegramBotToken && telegramChatId) await sendTpHitTelegramNotification(telegramBotToken, telegramChatId, tracked.pair, 'TP3', lastClose, momentum);
+          trackedTradesRef.current.delete(signal.id);
+          clearInterval(interval);
+        } else if (hitTp2) {
+          if (telegramBotToken && telegramChatId) await sendTpHitTelegramNotification(telegramBotToken, telegramChatId, tracked.pair, 'TP2', lastClose, momentum);
+          trackedTradesRef.current.set(signal.id, { ...tracked, hitTp2: true });
+        } else if (hitTp1) {
+          if (telegramBotToken && telegramChatId) await sendTpHitTelegramNotification(telegramBotToken, telegramChatId, tracked.pair, 'TP1', lastClose, momentum);
+          trackedTradesRef.current.set(signal.id, { ...tracked, hitTp1: true });
+        }
+      } catch (e) {
+        console.error('[monitorTradeForTpHits] error:', e);
+      }
+    }, 60 * 1000);
+
+    // Stop watching after 6 hours regardless, to avoid orphaned intervals.
+    setTimeout(() => { trackedTradesRef.current.delete(signal.id); clearInterval(interval); }, 6 * 60 * 60 * 1000);
+  };
+
   const executeAutoScan = async () => {
-    if (!isVipWithBot) {
-      toast.error('Only VIP members with configured Telegram bot can use this feature.');
-      return;
-    }
-
     setIsScanning(true);
-
     try {
-      // 1. Fetch Binance Futures Live API & Gold API
-      const tickers = await fetchTopCryptos();
-      setTotalScannedCount(tickers.length > 50 ? 1000 + tickers.length : 1048);
+      const signals = await scanMarketForSignals();
 
-      const candidateList = tickers.length > 0 ? tickers : [
-        { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', price: 2894.50, change24h: 1.84 },
-        { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', price: 96940.00, change24h: 4.12 },
-        { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', price: 228.40, change24h: 8.12 }
-      ];
-
-      const selectedCoin = candidateList[Math.floor(Math.random() * candidateList.length)];
-      const isLong = selectedCoin.change24h >= 0 || Math.random() > 0.4;
-      const price = selectedCoin.price;
-      const digits = price < 10 ? 4 : 2;
-      const strategy = STRATEGIES[Math.floor(Math.random() * STRATEGIES.length)];
-      const winProb = Math.floor(Math.random() * 8) + 89;
-
-      // Realistic Scalp Targets (1:1.1, 1:1.8)
-      const tp1 = +(price * (isLong ? 1.011 : 0.989)).toFixed(digits);
-      const tp2 = +(price * (isLong ? 1.025 : 0.975)).toFixed(digits);
-      const tp3 = +(price * (isLong ? 1.048 : 0.952)).toFixed(digits);
-      const sl = +(price * (isLong ? 0.990 : 1.010)).toFixed(digits);
-
-      const supp1 = +(price * 0.985).toFixed(digits);
-      const supp2 = +(price * 0.968).toFixed(digits);
-      const res1 = +(price * 1.018).toFixed(digits);
-      const res2 = +(price * 1.036).toFixed(digits);
-      const delta = isLong ? +1540 : -1280;
-
-      // Generate dynamic Canvas chart screenshot with Footprint Delta & S/R
-      const chartImg = generateTradeSetupChartImage({
-        pair: selectedCoin.pair,
-        type: isLong ? 'LONG' : 'SHORT',
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
-        support1: supp1,
-        support2: supp2,
-        resistance1: res1,
-        resistance2: res2,
-        timeframe: '1m / 5m Scalp',
-        strategy,
-        winProbability: winProb,
-        footprintDelta: delta,
-        orderBlockZone: `1m/5m SMC OB Zone ($${supp1})`,
-        spoofingWall: 'Ask Spoof Absorbed',
-      });
-
-      const generatedSignal = {
-        pair: selectedCoin.pair,
-        type: isLong ? ('LONG' as const) : ('SHORT' as const),
-        strategy,
-        timeframe: '1m / 5m Scalp Confluence',
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
-        support1: supp1,
-        support2: supp2,
-        resistance1: res1,
-        resistance2: res2,
-        leverage: '20x - 50x',
-        winProbability: winProb,
-        riskReward: '1:1.2 (Scalp)',
-        rationale: `Footprint CVD (${delta > 0 ? '+' : ''}${delta}) confirmed order block mitigation at $${supp1}. Spoof wall absorbed.`,
-        chartScreenshotUrl: chartImg,
-        footprintDelta: delta,
-        spoofingWall: 'Ask Spoof Wall Absorbed',
-      };
-
-      // 2. Dispatch automatically to Telegram Bot
-      let dispatched = false;
-      if (telegramBotToken && telegramChatId) {
-        dispatched = await dispatchTelegramSignal(generatedSignal);
-
-        // Simulate 5-second follow-up TP1 Hit notification with remaining momentum check
-        setTimeout(async () => {
-          const hasRemainingMomentum = Math.random() > 0.35;
-          await sendTpHitTelegramNotification(telegramBotToken, telegramChatId, selectedCoin.pair, 'TP1', tp1, hasRemainingMomentum);
-        }, 5000);
-      } else {
-        toast.info(`🤖 Auto-Scan complete for ${selectedCoin.pair}! Trade setup chart screenshot generated.`);
+      if (signals.length === 0) {
+        setLastScanTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        if (!isVipWithBot) toast.info('🔍 Scan complete — no strategy conditions met this minute.');
+        setIsScanning(false);
+        return;
       }
 
-      // 3. Add to live UI log
-      const newLog: AutoScanLog = {
-        id: `LOG-${Date.now()}`,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        pair: selectedCoin.pair,
-        type: isLong ? 'LONG' : 'SHORT',
-        entryPrice: price,
-        tp1,
-        tp2,
-        tp3,
-        sl,
-        support1: supp1,
-        resistance1: res1,
-        winProb,
-        chartImg,
-        dispatchedToTelegram: dispatched || Boolean(telegramBotToken && telegramChatId),
-      };
+      for (const signal of signals) {
+        const digits = signal.entryPrice < 10 ? 4 : 2;
+        const supp1 = +(Math.min(signal.entryPrice, signal.stopLoss) * 0.999).toFixed(digits);
+        const res1 = +(Math.max(signal.entryPrice, signal.stopLoss) * 1.001).toFixed(digits);
 
-      setLogs(prev => [newLog, ...prev].slice(0, 8));
+        const chartImg = generateTradeSetupChartImage({
+          pair: signal.pair,
+          type: signal.type,
+          entryPrice: signal.entryPrice,
+          target1: signal.target1,
+          target2: signal.target2,
+          target3: signal.target3,
+          stopLoss: signal.stopLoss,
+          support1: supp1,
+          resistance1: res1,
+          timeframe: signal.timeframe,
+          strategy: signal.strategy,
+          winProbability: signal.winProbability,
+          footprintDelta: signal.footprintDelta,
+          orderBlockZone: signal.orderBlockZone,
+        });
+
+        let dispatched = false;
+        if (telegramBotToken && telegramChatId) {
+          dispatched = await dispatchTelegramSignal({
+            pair: signal.pair,
+            type: signal.type,
+            strategy: signal.strategy,
+            timeframe: signal.timeframe,
+            entryPrice: signal.entryPrice,
+            target1: signal.target1,
+            target2: signal.target2,
+            target3: signal.target3,
+            stopLoss: signal.stopLoss,
+            leverage: signal.leverage,
+            winProbability: signal.winProbability,
+            riskReward: signal.riskReward,
+            rationale: signal.rationale,
+            footprintDelta: signal.footprintDelta,
+            orderBlockZone: signal.orderBlockZone,
+            backtestLabel: signal.backtestLabel,
+            momentumNote: signal.momentumNote,
+          });
+          if (dispatched) monitorTradeForTpHits(signal);
+        } else {
+          toast.info(`🔍 ${signal.pair} ${signal.type} signal fired (${signal.strategy}) — connect Telegram to receive alerts.`);
+        }
+
+        const newLog: AutoScanLog = {
+          id: signal.id,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          pair: signal.pair,
+          type: signal.type,
+          entryPrice: signal.entryPrice,
+          tp1: signal.target1,
+          tp2: signal.target2,
+          tp3: signal.target3,
+          sl: signal.stopLoss,
+          support1: supp1,
+          resistance1: res1,
+          winProb: signal.winProbability,
+          chartImg,
+          dispatchedToTelegram: dispatched,
+        };
+        setLogs(prev => [newLog, ...prev].slice(0, 12));
+      }
+
       setLastScanTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
     } catch (err) {
       console.error('Auto-scan error:', err);
+      toast.error('Scan failed — check your connection and try again.');
     } finally {
       setIsScanning(false);
     }
   };
 
+  // Real 1-minute auto-scan loop.
+  useEffect(() => {
+    if (!autoScanEnabled) return;
+    executeAutoScan();
+    const id = setInterval(executeAutoScan, SCAN_INTERVAL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoScanEnabled]);
+
+  // Automatic hourly backtest report so it goes out even if the user never
+  // taps "Immediate Backtest Report".
+  useEffect(() => {
+    if (!isVipWithBot) return;
+    const id = setInterval(async () => {
+      const summary = await generateLiveBacktestSummary('Hourly Auto Report');
+      if (telegramBotToken && telegramChatId) await sendBacktestReportToTelegram(telegramBotToken, telegramChatId, summary);
+    }, BACKTEST_INTERVAL_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVipWithBot, telegramBotToken, telegramChatId]);
+
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950/80 to-slate-900 border border-emerald-500/40 shadow-2xl text-slate-100 font-sans my-6 relative overflow-hidden">
-      {/* Glow pulse indicator */}
       <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Header Bar */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -222,18 +245,17 @@ export const AutoScannerService: React.FC = () => {
 
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-base text-slate-100">Binance Futures 1-Min Scalp Engine & Telegram Dispatch</h3>
+              <h3 className="font-extrabold text-base text-slate-100">Real Strategy Scan Engine & Telegram Dispatch</h3>
               <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[10px] gap-1 font-bold">
-                <Flame className="h-3 w-3 text-amber-400" /> BINANCE FUTURES LIVE
+                <Flame className="h-3 w-3 text-amber-400" /> 21 STRATEGIES · LIVE CANDLES
               </Badge>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Footprint CVD, Orderbook Spoofing & SMC Order Blocks with dynamic TP/SL scalp targets and momentum Telegram alerts.
+              Runs all 21 strategies against real Binance candles every 60s. Only dispatches when a strategy genuinely triggers.
             </p>
           </div>
         </div>
 
-        {/* Controls & Immediate Backtest Trigger */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono text-xs flex items-center gap-2">
             <span className="text-slate-400">Last Scan:</span>
@@ -263,42 +285,40 @@ export const AutoScannerService: React.FC = () => {
         </div>
       </div>
 
-      {/* Auto Scanner Status Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-4 font-mono text-xs">
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 block font-sans">BINANCE FUTURES LIVE</span>
-          <span className="text-sm font-bold text-slate-100">{totalScannedCount}+ Perps & Gold</span>
+          <span className="text-[10px] text-slate-400 block font-sans">WATCHLIST</span>
+          <span className="text-sm font-bold text-slate-100">{totalScannedCount} pairs · live Binance data</span>
         </div>
 
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
           <span className="text-[10px] text-slate-400 block font-sans">ANALYSIS ENGINE</span>
-          <span className="text-sm font-bold text-cyan-400">Footprint CVD + Spoofing</span>
+          <span className="text-sm font-bold text-cyan-400">21 real strategies + RSI/MACD/ATR</span>
         </div>
 
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 block font-sans">TP1 MOMENTUM ALERTS</span>
-          <span className="text-sm font-bold text-emerald-400">AUTOMATICALLY DISPATCHED</span>
+          <span className="text-[10px] text-slate-400 block font-sans">TP1/TP2/TP3 ALERTS</span>
+          <span className="text-sm font-bold text-emerald-400">Live price-triggered</span>
         </div>
 
         <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80">
-          <span className="text-[10px] text-slate-400 block font-sans">HOURLY BACKTESTING</span>
-          <span className="text-sm font-bold text-indigo-300">Non-Repetitive Reports</span>
+          <span className="text-[10px] text-slate-400 block font-sans">BACKTEST REPORT</span>
+          <span className="text-sm font-bold text-indigo-300">Auto-sent hourly</span>
         </div>
       </div>
 
-      {/* Live Auto Scan Broadcast Logs */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-extrabold text-slate-300 flex items-center gap-1.5 font-sans">
             <Send className="h-3.5 w-3.5 text-indigo-400" />
-            Live Dispatched Scalp Signals with Footprint Delta & TP Hit Alerts
+            Live Dispatched Signals (real triggers only)
           </span>
-          <span className="text-[10px] text-slate-500 font-mono">Updated on manual scan</span>
+          <span className="text-[10px] text-slate-500 font-mono">Auto-scans every 60s</span>
         </div>
 
         {logs.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-center text-xs text-slate-400 font-mono">
-            ⏳ No scans yet. Click "Force Scan" to start.
+            {isScanning ? '⏳ Scanning live candles...' : '⏳ No strategy has triggered yet this cycle. It will post here the moment one does.'}
           </div>
         ) : (
           <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto scrollbar-none">
@@ -306,7 +326,7 @@ export const AutoScannerService: React.FC = () => {
               <div key={log.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <Badge className={log.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}>
-                    {log.type} SCALP
+                    {log.type}
                   </Badge>
                   <div>
                     <span className="font-bold text-slate-100 font-sans">{log.pair}</span>
@@ -315,7 +335,7 @@ export const AutoScannerService: React.FC = () => {
                 </div>
 
                 <div className="flex items-center gap-3 text-right">
-                  <span className="text-emerald-400 font-bold">{log.winProb}% Win</span>
+                  <span className="text-emerald-400 font-bold">{log.winProb > 0 ? `${log.winProb}% backtested` : 'insufficient sample'}</span>
                   <Button
                     size="sm"
                     variant="outline"
@@ -324,9 +344,11 @@ export const AutoScannerService: React.FC = () => {
                   >
                     <ImageIcon className="h-3 w-3" /> View Chart
                   </Button>
-                  <Badge variant="outline" className="text-[10px] border-indigo-500/40 text-indigo-300 gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Telegram Dispatched
-                  </Badge>
+                  {log.dispatchedToTelegram && (
+                    <Badge variant="outline" className="text-[10px] border-indigo-500/40 text-indigo-300 gap-1">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Sent
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))}
@@ -334,14 +356,13 @@ export const AutoScannerService: React.FC = () => {
         )}
       </div>
 
-      {/* Chart Screenshot Preview Modal */}
       {selectedLogForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-cyan-400" />
-                {selectedLogForModal.pair} Scalp Setup Chart Screenshot
+                {selectedLogForModal.pair} Setup Chart
               </span>
               <Button size="sm" variant="ghost" onClick={() => setSelectedLogForModal(null)} className="text-slate-400">
                 Close
