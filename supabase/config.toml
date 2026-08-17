@@ -1,0 +1,17 @@
+# Supabase project config.
+# The [functions.auto-scan] block schedules this Edge Function to run
+# automatically every minute via Supabase's Cron Triggers. After you deploy
+# with `supabase functions deploy auto-scan`, confirm in
+# Dashboard > Edge Functions > auto-scan > Cron that the schedule below is
+# active -- some Supabase plans require enabling it once in the dashboard
+# even after it's declared here.
+
+[functions.auto-scan]
+verify_jwt = false
+schedule = "* * * * *"
+
+[functions.dispatch-signal]
+verify_jwt = false
+
+[functions.coinglass-whale-tracker]
+verify_jwt = false
