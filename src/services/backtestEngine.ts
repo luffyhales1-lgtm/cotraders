@@ -59,7 +59,7 @@ export function runWalkForwardBacktest(candles: CandleData[], maxBars = 180): Wa
       }
       if (outcome === null) continue; // trade never resolved within the horizon — excluded, not counted either way
 
-      const entry_stats = statsMap.get(r.name) ?? { trades: 0; wins: 0; losses: 0; rSum: 0 };
+      const entry_stats = statsMap.get(r.name) ?? { trades: 0, wins: 0, losses: 0, rSum: 0 };
       entry_stats.trades += 1;
       if (outcome === 'win') { entry_stats.wins += 1; entry_stats.rSum += TP1_ATR / SL_ATR; }
       else { entry_stats.losses += 1; entry_stats.rSum -= 1; }
