@@ -7,7 +7,7 @@ import { SignalCard } from '@/components/signals/SignalCard';
 import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
 import { AutoScannerService } from '@/components/telegram/AutoScannerService';
 import { CustomScannerSandbox } from '@/components/signals/CustomScannerSandbox';
-import { generateLiveSignals } from '@/services/signalEngine';
+import { scanMarketForSignals } from '@/services/signalEngine';
 import { Signal } from '@/types/trading';
 import { RefreshCw, Zap, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,21 +21,28 @@ const AiSignals: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('ALL');
   const [loading, setLoading] = useState<boolean>(false);
 
-  const loadSignals = () => {
+  const loadSignals = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setSignals(generateLiveSignals());
+    try {
+      const live = await scanMarketForSignals();
+      setSignals(live);
+      toast.success(live.length > 0
+        ? `Scan complete: ${live.length} strategy trigger(s) found on real candles.`
+        : 'Scan complete: no strategy conditions met right now.');
+    } catch (e) {
+      toast.error('Scan failed — check your connection.');
+    } finally {
       setLoading(false);
-      toast.success('AI Scanner Refreshed: New 5-Minute Strategy Confluence Computed');
-    }, 600);
+    }
   };
 
   useEffect(() => {
     loadSignals();
     const interval = setInterval(() => {
-      setSignals(generateLiveSignals());
+      loadSignals();
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = signals.filter(s => {
