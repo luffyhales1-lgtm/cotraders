@@ -162,32 +162,32 @@ export async function fetchOrderBook(symbol: string): Promise<{ bids: OrderBookI
 
     if (res && res.ok) {
       const data = await res.json();
-
+      
       const bids: OrderBookItem[] = data.bids.slice(0, 10).map((bid: any) => ({
         price: parseFloat(bid[0]),
         amount: parseFloat(bid[1]),
         total: 0 // Will be calculated below
       }));
-
+      
       const asks: OrderBookItem[] = data.asks.slice(0, 10).map((ask: any) => ({
         price: parseFloat(ask[0]),
         amount: parseFloat(ask[1]),
         total: 0 // Will be calculated below
       }));
-
+      
       // Calculate cumulative totals
       let bidTotal = 0;
       for (let i = 0; i < bids.length; i++) {
         bidTotal += bids[i].amount;
         bids[i].total = bidTotal;
       }
-
+      
       let askTotal = 0;
       for (let i = 0; i < asks.length; i++) {
         askTotal += asks[i].amount;
         asks[i].total = askTotal;
       }
-
+      
       return { bids, asks };
     }
   } catch (e) {
