@@ -3,6 +3,9 @@ import { useAuth } from '@/context/AuthContext';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { generateLiveBacktestSummary, sendBacktestReportToTelegram } from '@/services/backtestService';
+import { fetchKlines } from '@/services/binanceApi';
+import { evaluateAllStrategies } from '@/services/strategies';
+import { buildSignalFromStrategyHit } from '@/services/signalEngine';
 import {
   Bot,
   Send,
@@ -23,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export const TelegramBotSimulator: React.FC = () => {
-  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
+  const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal, isVipMember } = useAuth();
 
   const [step, setStep] = useState<'IDLE' | 'SELECT_TIMEFRAME' | 'SELECT_COIN' | 'SCANNING' | 'COMPLETED'>('IDLE');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('5m');
@@ -32,7 +35,7 @@ export const TelegramBotSimulator: React.FC = () => {
   const [scannedSignal, setScannedSignal] = useState<any | null>(null);
 
   // Check if user is VIP and has set up bot
-  const isVipWithBot = user && user.tier !== 'free' && telegramBotToken && telegramChatId;
+  const isVipWithBot = isVipMember && telegramBotToken && telegramChatId;
 
   useEffect(() => {
     const loadAssets = async () => {
@@ -65,9 +68,9 @@ export const TelegramBotSimulator: React.FC = () => {
       toast.error('Only VIP members with configured Telegram bot can use this feature.');
       return;
     }
-    toast.info('Generating immediate backtesting report...');
-    const summary = generateLiveBacktestSummary('Telegram Interactive On-Demand Report');
-    
+    toast.info('Running real walk-forward backtest...');
+    const summary = await generateLiveBacktestSummary('Telegram Interactive On-Demand Report');
+
     if (telegramBotToken && telegramChatId) {
       await sendBacktestReportToTelegram(telegramBotToken, telegramChatId, summary);
       toast.success('Immediate Backtest Performance Report dispatched to Telegram!');
@@ -81,7 +84,7 @@ export const TelegramBotSimulator: React.FC = () => {
     setStep('SELECT_COIN');
   };
 
-  const handleSelectCoinAndScan = (coinSymbol: string) => {
+  const handleSelectCoinAndScan = async (coinSymbol: string) => {
     if (!isVipWithBot) {
       toast.error('Only VIP members with configured Telegram bot can use this feature.');
       return;
@@ -89,66 +92,80 @@ export const TelegramBotSimulator: React.FC = () => {
     setSelectedCoin(coinSymbol);
     setStep('SCANNING');
 
-    setTimeout(() => {
+    try {
       const selected = liveAssets.find(c => c.symbol === coinSymbol) || liveAssets[0] || {
-        pair: 'XAU/USD (GOLD SPOT)', price: 2894.50, change24h: 1.84
+        symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', price: 2894.50, change24h: 1.84
       };
 
-      const isLong = selected.change24h >= 0 || Math.random() > 0.4;
-      const price = selected.price;
-      const digits = selected.price < 10 ? 4 : 2;
+      const candles = await fetchKlines(selected.symbol, selectedTimeframe, 200);
+      if (candles.length < 60) {
+        toast.error('Not enough historical candles for this timeframe yet — try a different one.');
+        setStep('SELECT_COIN');
+        return;
+      }
 
-      const tp1 = +(price * (isLong ? 1.011 : 0.989)).toFixed(digits);
-      const tp2 = +(price * (isLong ? 1.025 : 0.975)).toFixed(digits);
-      const tp3 = +(price * (isLong ? 1.048 : 0.952)).toFixed(digits);
-      const sl = +(price * (isLong ? 0.990 : 1.010)).toFixed(digits);
+      const results = evaluateAllStrategies(candles);
+      const triggered = results.filter(r => r.triggered && r.direction);
 
-      const supp1 = +(price * 0.985).toFixed(digits);
-      const supp2 = +(price * 0.968).toFixed(digits);
-      const res1 = +(price * 1.018).toFixed(digits);
-      const res2 = +(price * 1.036).toFixed(digits);
+      if (triggered.length === 0) {
+        setScannedSignal(null);
+        setStep('COMPLETED');
+        toast.info(`Scan complete for ${selected.pair}: no strategy conditions are met right now. That's a real "no trade" result, not an error.`);
+        return;
+      }
 
-      const winProb = Math.floor(Math.random() * 8) + 89;
-      const strategy = 'SMC Order Block & Footprint Delta';
+      const best = triggered[0];
+      const agreeing = triggered.filter(r => r.direction === best.direction).map(r => r.name);
+      const signal = buildSignalFromStrategyHit(
+        { symbol: selected.symbol, pair: selected.pair, interval: selectedTimeframe },
+        candles, best, agreeing,
+      );
+      if (!signal) {
+        setScannedSignal(null);
+        setStep('COMPLETED');
+        return;
+      }
+
+      const digits = signal.entryPrice < 10 ? 4 : 2;
+      const supp1 = +(Math.min(signal.entryPrice, signal.stopLoss) * 0.999).toFixed(digits);
+      const res1 = +(Math.max(signal.entryPrice, signal.stopLoss) * 1.001).toFixed(digits);
 
       const chartImg = generateTradeSetupChartImage({
-        pair: selected.pair,
-        type: isLong ? 'LONG' : 'SHORT',
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
+        pair: signal.pair,
+        type: signal.type,
+        entryPrice: signal.entryPrice,
+        target1: signal.target1,
+        target2: signal.target2,
+        target3: signal.target3,
+        stopLoss: signal.stopLoss,
         support1: supp1,
-        support2: supp2,
         resistance1: res1,
-        resistance2: res2,
         timeframe: selectedTimeframe,
-        strategy,
-        winProbability: winProb,
-        footprintDelta: isLong ? +1640 : -1320,
+        strategy: signal.strategy,
+        winProbability: signal.winProbability,
+        footprintDelta: signal.footprintDelta,
       });
 
       const generated = {
-        pair: selected.pair,
-        type: isLong ? ('LONG' as const) : ('SHORT' as const),
-        strategy,
+        pair: signal.pair,
+        type: signal.type,
+        strategy: signal.strategy,
         timeframe: selectedTimeframe,
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
+        entryPrice: signal.entryPrice,
+        target1: signal.target1,
+        target2: signal.target2,
+        target3: signal.target3,
+        stopLoss: signal.stopLoss,
         support1: supp1,
-        support2: supp2,
         resistance1: res1,
-        resistance2: res2,
-        leverage: '20x - 50x',
-        winProbability: winProb,
-        riskReward: '1:1.2',
-        rationale: `Live ${selectedTimeframe} scan completed on ${selected.pair}. Footprint delta (+1640) confirmed order block absorption at $${supp1}.`,
+        leverage: signal.leverage,
+        winProbability: signal.winProbability,
+        riskReward: signal.riskReward,
+        rationale: signal.rationale,
         chartScreenshotUrl: chartImg,
-        footprintDelta: isLong ? +1640 : -1320,
+        footprintDelta: signal.footprintDelta,
+        backtestLabel: signal.backtestLabel,
+        momentumNote: signal.momentumNote,
       };
 
       setScannedSignal(generated);
@@ -157,9 +174,13 @@ export const TelegramBotSimulator: React.FC = () => {
       if (telegramBotToken && telegramChatId) {
         dispatchTelegramSignal(generated);
       } else {
-        toast.success(`Live Scan Complete for ${selected.pair}! Configure Telegram Bot Token in Admin Panel to dispatch automatically.`);
+        toast.success(`Live scan complete for ${selected.pair}! Configure Telegram Bot Token in Admin Panel to dispatch automatically.`);
       }
-    }, 1200);
+    } catch (e) {
+      console.error('[TelegramBotSimulator] scan failed:', e);
+      toast.error('Scan failed — check your connection and try again.');
+      setStep('SELECT_COIN');
+    }
   };
 
   const handleReset = () => {
@@ -238,7 +259,7 @@ export const TelegramBotSimulator: React.FC = () => {
               <Button 
                 onClick={handleTriggerImmediateBacktest} 
                 variant="outline"
-                className={isVipWithBot ? "border-purple-500/50 text-purple-300 hover:bg-purple-500/10 font-bold text-xs py_5 gap-2" : "border-slate-500/50 text-slate-400 cursor-not-allowed"}
+                className={isVipWithBot ? "border-purple-500/50 text-purple-300 hover:bg-purple-500/20 font-bold text-xs py_5 gap-2" : "border-slate-500/50 text-slate-400 cursor-not-allowed"}
               >
                 <BarChart2 className="h-4 w-4" />
                 📊 Immediate Backtest Report
@@ -274,7 +295,7 @@ export const TelegramBotSimulator: React.FC = () => {
         {step === 'SELECT_COIN' && (
           <div className="p-5 rounded-2xl bg-slate-950 border border-cyan-500/40 space-y-3 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-amber-400 flex items-center gap-1.5">
+              <span className="text-xs font-extrabod text-amber-400 flex items-center gap-1.5">
                 <Scan className="h-4 w-4" /> STEP 2: SELECT FUTURES ASSET ({selectedTimeframe})
               </span>
               <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-400">Binance Futures Live API</Badge>
