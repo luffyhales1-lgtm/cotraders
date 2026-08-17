@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { sendTpHitTelegramNotification } from '@/services/telegramService';
 import { generateLiveBacktestSummary, sendBacktestReportToTelegram } from '@/services/backtestService';
-import { scanMarketForSignals, describeMomentum, DEFAULT_SCAN_WATCHLIST } from '@/services/signalEngine';
+import { scanMarketForSignals, describeMomentum, buildDynamicWatchlist, DEFAULT_SCAN_WATCHLIST, MACRO_SCAN_WATCHLIST } from '@/services/signalEngine';
 import { fetchKlines } from '@/services/binanceApi';
 import { rsi, macd } from '@/services/indicators';
 import { Signal } from '@/types/trading';
@@ -14,7 +14,9 @@ import {
   Radio,
   Flame,
   BarChart2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Play,
+  Pause,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,19 +41,48 @@ interface AutoScanLog {
 
 const SCAN_INTERVAL_MS = 60 * 1000; // real 1-minute auto-scan
 const BACKTEST_INTERVAL_MS = 60 * 60 * 1000; // auto-send backtest report hourly in case the user forgets
+const AUTO_SCAN_STORAGE_KEY = 'cotraders:autoScanEnabled';
+const MACRO_COUNT = MACRO_SCAN_WATCHLIST.length;
+
+function readStoredAutoScanEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(AUTO_SCAN_STORAGE_KEY);
+    return raw === null ? true : raw === 'true';
+  } catch {
+    return true;
+  }
+}
 
 export const AutoScannerService: React.FC = () => {
   const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal, isVipMember } = useAuth();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [totalScannedCount] = useState<number>(DEFAULT_SCAN_WATCHLIST.length);
+  const [totalScannedCount, setTotalScannedCount] = useState<number>(DEFAULT_SCAN_WATCHLIST.length);
   const [lastScanTime, setLastScanTime] = useState<string>('Not yet run');
   const [logs, setLogs] = useState<AutoScanLog[]>([]);
   const [selectedLogForModal, setSelectedLogForModal] = useState<AutoScanLog | null>(null);
-  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(true);
+  const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(readStoredAutoScanEnabled);
 
   const isVipWithBot = isVipMember && telegramBotToken && telegramChatId;
   const trackedTradesRef = useRef<Map<string, Signal & { hitTp1: boolean; hitTp2: boolean }>>(new Map());
+
+  const toggleAutoScan = () => {
+    setAutoScanEnabled(prev => {
+      const next = !prev;
+      try { localStorage.setItem(AUTO_SCAN_STORAGE_KEY, String(next)); } catch { /* ignore */ }
+      toast[next ? 'success' : 'info'](next ? '▶️ Auto-scan enabled — resuming every 60s.' : '⏸️ Auto-scan paused. Use Force Scan to run one-off scans.');
+      return next;
+    });
+  };
+
+  // Refresh the real top-volume watchlist size once on mount so the
+  // WATCHLIST card shows the actual number of symbols being scanned
+  // (top-volume USDT perpetuals + gold/silver/forex), not a stale count.
+  useEffect(() => {
+    let active = true;
+    buildDynamicWatchlist().then(list => { if (active) setTotalScannedCount(list.length); });
+    return () => { active = false; };
+  }, []);
 
   const handleTriggerImmediateBacktest = async () => {
     if (!isVipWithBot) {
@@ -251,7 +282,8 @@ export const AutoScannerService: React.FC = () => {
               </Badge>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Runs all 21 strategies against real Binance candles every 60s. Only dispatches when a strategy genuinely triggers.
+              Runs all 21 strategies (incl. ICT/SMC, footprint delta, order blocks) against real Binance candles every 60s,
+              across the top {totalScannedCount - MACRO_COUNT} pairs by volume plus gold, silver &amp; forex. Only dispatches when a strategy genuinely triggers.
             </p>
           </div>
         </div>
@@ -261,6 +293,18 @@ export const AutoScannerService: React.FC = () => {
             <span className="text-slate-400">Last Scan:</span>
             <span className="font-extrabold text-emerald-400 text-sm">{isScanning ? 'SCANNING...' : lastScanTime}</span>
           </div>
+
+          <Button
+            onClick={toggleAutoScan}
+            size="sm"
+            variant="outline"
+            className={autoScanEnabled
+              ? 'border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/20 text-xs font-bold gap-1'
+              : 'border-rose-500/50 text-rose-300 hover:bg-rose-500/20 text-xs font-bold gap-1'}
+          >
+            {autoScanEnabled ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            {autoScanEnabled ? 'Auto-Scan: ON' : 'Auto-Scan: OFF'}
+          </Button>
 
           <Button
             onClick={handleTriggerImmediateBacktest}
@@ -318,7 +362,11 @@ export const AutoScannerService: React.FC = () => {
 
         {logs.length === 0 ? (
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 text-center text-xs text-slate-400 font-mono">
-            {isScanning ? '⏳ Scanning live candles...' : '⏳ No strategy has triggered yet this cycle. It will post here the moment one does.'}
+            {!autoScanEnabled
+              ? '⏸️ Auto-scan is paused. Toggle Auto-Scan back on, or use Force Scan for a one-off pass.'
+              : isScanning
+                ? '⏳ Scanning live candles...'
+                : '⏳ No strategy has triggered yet this cycle. It will post here the moment one does.'}
           </div>
         ) : (
           <div className="space-y-2 font-mono text-xs max-h-56 overflow-y-auto scrollbar-none">
