@@ -87,7 +87,11 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
       const filtered = data.filter((item: any) => item.symbol && item.symbol.endsWith('USDT'));
       filtered.sort((a: any, b: any) => parseFloat(b.quoteVolume || '0') - parseFloat(a.quoteVolume || '0'));
 
-      const formatted: CoinTicker[] = filtered.slice(0, 100).map((item: any) => {
+      // Binance Futures lists roughly 400-500 USDT-margined perpetuals total --
+      // that's the real maximum available (there's no way to reach "2000" on
+      // this exchange). We return all of them here instead of an arbitrary
+      // top-100 cap, so the scanner page can search/filter the full list.
+      const formatted: CoinTicker[] = filtered.map((item: any) => {
         const base = item.symbol.replace('USDT', '');
         const lastPrice = parseFloat(item.lastPrice || '0');
         return {
@@ -127,13 +131,16 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
 
     if (res && res.ok) {
       const raw = await res.json();
+      // Binance kline array: [openTime, open, high, low, close, volume, closeTime,
+      // quoteVolume, numTrades, takerBuyBaseVolume, takerBuyQuoteVolume, ignore]
       return raw.map((c: any) => ({
         time: new Date(c[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         open: parseFloat(c[1]),
         high: parseFloat(c[2]),
         low: parseFloat(c[3]),
         close: parseFloat(c[4]),
-        volume: parseFloat(c[5])
+        volume: parseFloat(c[5]),
+        takerBuyVolume: parseFloat(c[9] ?? c[5] / 2),
       }));
     }
   } catch (e) {
@@ -155,32 +162,32 @@ export async function fetchOrderBook(symbol: string): Promise<{ bids: OrderBookI
 
     if (res && res.ok) {
       const data = await res.json();
-      
+
       const bids: OrderBookItem[] = data.bids.slice(0, 10).map((bid: any) => ({
         price: parseFloat(bid[0]),
         amount: parseFloat(bid[1]),
         total: 0 // Will be calculated below
       }));
-      
+
       const asks: OrderBookItem[] = data.asks.slice(0, 10).map((ask: any) => ({
         price: parseFloat(ask[0]),
         amount: parseFloat(ask[1]),
         total: 0 // Will be calculated below
       }));
-      
+
       // Calculate cumulative totals
       let bidTotal = 0;
       for (let i = 0; i < bids.length; i++) {
         bidTotal += bids[i].amount;
         bids[i].total = bidTotal;
       }
-      
+
       let askTotal = 0;
       for (let i = 0; i < asks.length; i++) {
         askTotal += asks[i].amount;
         asks[i].total = askTotal;
       }
-      
+
       return { bids, asks };
     }
   } catch (e) {

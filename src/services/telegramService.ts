@@ -22,6 +22,8 @@ export interface TelegramSignalPayload {
   footprintDelta?: number;
   spoofingWall?: string;
   orderBlockZone?: string;
+  backtestLabel?: string;
+  momentumNote?: string;
 }
 
 export async function sendTelegramSignalNotification(
@@ -42,34 +44,33 @@ export async function sendTelegramSignalNotification(
   const res1 = signal.resistance1 || +(price * 1.018).toFixed(digits);
   const res2 = signal.resistance2 || +(price * 1.036).toFixed(digits);
 
-  const delta = signal.footprintDelta || (isLong ? 1420 : -1420);
+  const delta = signal.footprintDelta ?? 0;
 
   const text = `
-🚀 <b>COTRADERS LIVE SIGNAL</b> 🚀
+${isLong ? '🚀' : '🔻'} <b>COTRADERS LIVE SIGNAL</b> ${isLong ? '🚀' : '🔻'}
 ────────────────────────────
 <b>Pair / Asset:</b> <code>${signal.pair}</code>
-<b>Signal Action:</b> ${isLong ? '🚀 BUY / LONG' : '📉 SELL / SHORT'}
-<b>Leverage:</b> <code>${signal.leverage}</code>
+<b>Signal Action:</b> ${isLong ? '🟢 BUY / LONG' : '🔴 SELL / SHORT'}
+<b>Suggested Leverage:</b> <code>${signal.leverage}</code>
 <b>Timeframe:</b> <code>${signal.timeframe}</code>
 <b>Strategy:</b> <code>${signal.strategy}</code>
-<b>Win Probability:</b> 🔥 <b>${signal.winProbability}%</b>
+<b>Win Rate:</b> 📊 <b>${signal.winProbability ? signal.winProbability + '%' : 'N/A'}</b>${signal.backtestLabel ? `\n<i>${signal.backtestLabel}</i>` : ''}
 
-<b>🎯 ENTRY PRICE:</b> <code>$${price}</code>
+<b>🎯 ENTRY:</b> <code>$${price}</code>
 <b>🛑 STOP LOSS:</b> <code>$${signal.stopLoss}</code>
 
-<b>📈 TAKE PROFIT 1 (SCALP):</b> <code>$${signal.target1}</code>
-<b>📈 TAKE PROFIT 2:</b> <code>$${signal.target2}</code>
-<b>📈 TAKE PROFIT 3:</b> <code>$${signal.target3}</code>
+<b>✅ TP1:</b> <code>$${signal.target1}</code> (${signal.riskReward.split('/')[0]?.trim()})
+<b>✅ TP2:</b> <code>$${signal.target2}</code>
+<b>✅ TP3 (final):</b> <code>$${signal.target3}</code>
 
-📊 <b>DEEP INSTITUTIONAL ANALYSIS</b>
-• <b>Footprint CVD:</b> <code>${delta > 0 ? '+' : ''}${delta} Delta</code>
-• <b>Spoofing Wall:</b> <i>${signal.spoofingWall || 'Ask Spoof Absorbed'}</i>
-• <b>Support 1 (S1):</b> <code>$${supp1}</code> | <b>Support 2 (S2):</b> <code>$${supp2}</code>
-• <b>Resistance 1 (R1):</b> <code>$${res1}</code> | <b>Resistance 2 (R2):</b> <code>$${res2}</code>
+📐 <b>MARKET READ</b>
+• <b>Volume Delta (buy-sell, real):</b> <code>${delta > 0 ? '+' : ''}${delta}</code>
+• <b>Recent Support:</b> <code>$${supp1}</code> | <b>Recent Resistance:</b> <code>$${res1}</code>
+${signal.momentumNote ? `• <b>Momentum:</b> <i>${signal.momentumNote}</i>` : ''}
 
-💡 <b>SMC CONFLUENCE:</b> <i>${signal.rationale}</i>
+💡 <b>Why this fired:</b> <i>${signal.rationale}</i>
 ────────────────────────────
-📊 <b>Chart screenshot with Footprint Delta, S/R, Entry, TP1/2/3, and SL drawn attached.</b>
+⚠️ <i>Backtested performance, not a guarantee. Size positions responsibly.</i>
   `.trim();
 
   try {
@@ -100,37 +101,49 @@ export async function sendTelegramSignalNotification(
   }
 }
 
-// Send TP1 Hit + Remaining Momentum Notification
+// Send TP1/TP2/TP3/SL hit notification, driven by a REAL momentum read
+// (see describeMomentum in signalEngine.ts) rather than a coin flip.
 export async function sendTpHitTelegramNotification(
   botToken: string,
   chatId: string,
   pair: string,
   tpHitLevel: 'TP1' | 'TP2' | 'TP3' | 'SL',
   price: number,
-  hasRemainingMomentum: boolean
+  momentum: { status: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL'; note: string }
 ): Promise<boolean> {
   if (!botToken || !chatId) return false;
 
   let emoji = '🎯';
-  let statusText = `<b>${tpHitLevel} TARGET HIT!</b>`;
+  let statusText = `<b>${tpHitLevel} HIT!</b>`;
+  let guidance = '';
+
   if (tpHitLevel === 'SL') {
     emoji = '🛑';
     statusText = `<b>STOP LOSS TRIGGERED</b>`;
+    guidance = `Trade invalidated at <code>$${price}</code>. Strategy conditions no longer hold — exit if not already flat.`;
+  } else if (tpHitLevel === 'TP3') {
+    emoji = '🏁';
+    statusText = `<b>TP3 HIT — FINAL TARGET</b>`;
+    guidance = `Full target reached at <code>$${price}</code>. Trade complete.`;
+  } else {
+    emoji = tpHitLevel === 'TP1' ? '✅' : '🎯';
+    const continuationLine = momentum.status === 'HIGH_MOMENTUM_CONTINUATION'
+      ? `⚡ <b>Momentum continuing</b> — conditions still favor pushing toward the next target. Consider holding a runner.`
+      : momentum.status === 'MOMENTUM_DEPLETING_SECURE_PROFIT'
+        ? `⚠️ <b>Momentum fading</b> — consider securing profit here / trailing SL to breakeven ($${price}).`
+        : `➖ <b>Momentum mixed</b> — no strong edge either way, use your own judgment on holding vs securing.`;
+    guidance = `${continuationLine}\n<i>${momentum.note}</i>`;
   }
 
-  const momentumMessage = hasRemainingMomentum
-    ? `⚡ <b>BUYERS Delta Momentum High:</b> Orderbook depth shows strong continuation toward TP2/TP3!`
-    : `⚠️ <b>Momentum Depleting:</b> Secure 80% profits or move Stop Loss to Breakeven ($${price}) now.`;
-
   const text = `
-${emoji} <b>LIVE TRADE UPDATE - ${pair}</b> ${emoji}
+${emoji} <b>TRADE UPDATE — ${pair}</b> ${emoji}
 ────────────────────────────
-Status: ${statusText}
-Current Price: <code>$${price}</code>
+${statusText}
+Price: <code>$${price}</code>
 
-${momentumMessage}
+${guidance}
 ────────────────────────────
-🤖 <i>Live Trading AI Automated Futures Engine</i>
+🤖 <i>CoTraders real-time strategy engine</i>
   `.trim();
 
   try {
