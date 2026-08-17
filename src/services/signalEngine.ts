@@ -3,10 +3,24 @@ import { evaluateAllStrategies } from './strategies';
 import { atr, volumeDelta, rsi, macd } from './indicators';
 import { runWalkForwardBacktest } from './backtestEngine';
 import { SL_ATR, TP1_ATR, TP2_ATR, TP3_ATR, riskRewardLabel, suggestLeverage } from './riskConfig';
-import { fetchKlines } from './binanceApi';
+import { fetchKlines, fetchTopCryptos } from './binanceApi';
 
 export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
 
+// Fixed macro instruments that are always scanned regardless of the crypto
+// universe below: gold, silver, and the 3 majors. XAU/XAG/forex candles are
+// synthetic (see binanceApi.ts) -- everything else here is real Binance data.
+export const MACRO_SCAN_WATCHLIST: ScanTarget[] = [
+  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', interval: '5m', isScalp: true },
+  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER SPOT)', interval: '5m', isScalp: true },
+  { symbol: 'EURUSD', pair: 'EUR/USD (FOREX)', interval: '15m', isScalp: false },
+  { symbol: 'GBPUSD', pair: 'GBP/USD (FOREX)', interval: '15m', isScalp: false },
+  { symbol: 'USDJPY', pair: 'USD/JPY (FOREX)', interval: '15m', isScalp: false },
+];
+
+// Used as a fallback (and as the default export for anything that still
+// imports DEFAULT_SCAN_WATCHLIST directly) before the dynamic top-volume
+// list has loaded for the first time.
 export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
   { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '5m', isScalp: true },
   { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '5m', isScalp: true },
@@ -16,8 +30,54 @@ export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
   { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '5m', isScalp: true },
   { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', interval: '15m', isScalp: false },
   { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', interval: '15m', isScalp: false },
-  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', interval: '5m', isScalp: true },
+  ...MACRO_SCAN_WATCHLIST,
 ];
+
+let cachedDynamicWatchlist: ScanTarget[] | null = null;
+let cachedDynamicWatchlistAt = 0;
+const DYNAMIC_LIST_TTL_MS = 5 * 60 * 1000; // refresh top-volume ranking every 5 min
+
+/**
+ * Builds the real scan universe: the top `topN` USDT perpetuals by 24h quote
+ * volume (refreshed from live Binance data every 5 minutes) plus the fixed
+ * macro instruments (gold, silver, EUR/USD, GBP/USD, USD/JPY). This is what
+ * "scan all coins" resolves to in practice -- Binance Futures lists ~400-500
+ * USDT pairs total, and fetching full 200-candle history for all of them
+ * every single minute would blow through public rate limits and take far
+ * longer than the 60s cycle. `topN` defaults to 60, which comfortably
+ * finishes a full pass (with concurrency, see below) inside the 60s window.
+ */
+export async function buildDynamicWatchlist(topN = 60): Promise<ScanTarget[]> {
+  const now = Date.now();
+  if (cachedDynamicWatchlist && now - cachedDynamicWatchlistAt < DYNAMIC_LIST_TTL_MS) {
+    return cachedDynamicWatchlist;
+  }
+
+  try {
+    const tickers = await fetchTopCryptos();
+    const cryptoOnly = tickers.filter(t => t.isFutures);
+    const top = cryptoOnly
+      .slice()
+      .sort((a, b) => b.volume24h - a.volume24h)
+      .slice(0, topN)
+      .map((t): ScanTarget => ({
+        symbol: t.symbol,
+        pair: t.pair,
+        interval: '5m',
+        isScalp: true,
+      }));
+
+    const list = top.length > 0 ? [...top, ...MACRO_SCAN_WATCHLIST] : DEFAULT_SCAN_WATCHLIST;
+    cachedDynamicWatchlist = list;
+    cachedDynamicWatchlistAt = now;
+    return list;
+  } catch (e) {
+    console.error('[buildDynamicWatchlist] failed, falling back to static list:', e);
+    return DEFAULT_SCAN_WATCHLIST;
+  }
+}
+
+const SCAN_CONCURRENCY = 8;
 
 /**
  * Scans a watchlist against REAL candle data and REAL strategy math.
@@ -25,28 +85,39 @@ export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
  * actually triggered on the latest closed candle. If nothing triggers
  * anywhere, this correctly returns an empty array -- it will not invent a
  * signal just to have something to show.
+ *
+ * Symbols are fetched with a small concurrency pool (not fully sequential,
+ * not all-at-once) so a 60+ symbol watchlist still finishes well inside a
+ * 60-second scan cycle without hammering the Binance API.
  */
-export async function scanMarketForSignals(watchlist: ScanTarget[] = DEFAULT_SCAN_WATCHLIST): Promise<Signal[]> {
+export async function scanMarketForSignals(watchlist?: ScanTarget[]): Promise<Signal[]> {
+  const targets = watchlist ?? await buildDynamicWatchlist();
   const signals: Signal[] = [];
 
-  for (const target of watchlist) {
-    try {
-      const candles = await fetchKlines(target.symbol, target.interval ?? '5m', 200);
-      if (candles.length < 60) continue;
+  let cursor = 0;
+  const worker = async () => {
+    while (cursor < targets.length) {
+      const target = targets[cursor++];
+      try {
+        const candles = await fetchKlines(target.symbol, target.interval ?? '5m', 200);
+        if (candles.length < 60) continue;
 
-      const results = evaluateAllStrategies(candles);
-      const triggered = results.filter(r => r.triggered && r.direction);
-      if (triggered.length === 0) continue;
+        const results = evaluateAllStrategies(candles);
+        const triggered = results.filter(r => r.triggered && r.direction);
+        if (triggered.length === 0) continue;
 
-      const best = triggered[0];
-      const agreeing = triggered.filter(r => r.direction === best.direction);
+        const best = triggered[0];
+        const agreeing = triggered.filter(r => r.direction === best.direction);
 
-      const signal = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name));
-      if (signal) signals.push(signal);
-    } catch (e) {
-      console.error(`[scanMarketForSignals] ${target.symbol} failed:`, e);
+        const signal = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name));
+        if (signal) signals.push(signal);
+      } catch (e) {
+        console.error(`[scanMarketForSignals] ${target.symbol} failed:`, e);
+      }
     }
-  }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(SCAN_CONCURRENCY, targets.length) }, worker));
 
   return signals;
 }

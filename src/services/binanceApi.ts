@@ -5,11 +5,13 @@ const BINANCE_SPOT_URL = 'https://api.binance.com/api/v3';
 
 let cachedTickers: CoinTicker[] = [];
 let liveGoldPrice = 2894.50;
+let liveSilverPrice = 32.10;
 
-// Fetch Live Forex & Gold Spot API
+// Fetch Live Forex & Metals Spot API
 export async function fetchLiveForexRates(): Promise<Record<string, number>> {
   const forexPrices: Record<string, number> = {
     'XAUUSD': liveGoldPrice,
+    'XAGUSD': liveSilverPrice,
     'EURUSD': 1.0845,
     'GBPUSD': 1.2980,
     'USDJPY': 152.40,
@@ -25,6 +27,18 @@ export async function fetchLiveForexRates(): Promise<Record<string, number>> {
       }
     }
 
+    // Silver spot -- same provider, XAG ticker. If this endpoint ever goes
+    // down or 404s, we silently fall back to the last known/default price
+    // rather than breaking the whole scan cycle.
+    const silverRes = await fetch('https://api.gold-api.com/price/XAG').catch(() => null);
+    if (silverRes && silverRes.ok) {
+      const sData = await silverRes.json();
+      if (sData && typeof sData.price === 'number' && sData.price > 5) {
+        liveSilverPrice = +sData.price.toFixed(3);
+        forexPrices['XAGUSD'] = liveSilverPrice;
+      }
+    }
+
     const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').catch(() => null);
     if (fxRes && fxRes.ok) {
       const fxData = await fxRes.json();
@@ -35,6 +49,10 @@ export async function fetchLiveForexRates(): Promise<Record<string, number>> {
         if (fxData.rates.XAU) {
           liveGoldPrice = +(1 / fxData.rates.XAU).toFixed(2);
           forexPrices['XAUUSD'] = liveGoldPrice;
+        }
+        if (fxData.rates.XAG) {
+          liveSilverPrice = +(1 / fxData.rates.XAG).toFixed(3);
+          forexPrices['XAGUSD'] = liveSilverPrice;
         }
       }
     }
@@ -64,6 +82,18 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
         isGold: true,
       },
       {
+        symbol: 'XAGUSDT',
+        pair: 'XAG/USD (SILVER SPOT)',
+        baseAsset: 'XAG',
+        quoteAsset: 'USD',
+        price: forex['XAGUSD'],
+        change24h: 1.12,
+        high24h: +(forex['XAGUSD'] + 0.45).toFixed(3),
+        low24h: +(forex['XAGUSD'] - 0.55).toFixed(3),
+        volume24h: 210000000,
+        isGold: true,
+      },
+      {
         symbol: 'EURUSD',
         pair: 'EUR/USD (FOREX)',
         baseAsset: 'EUR',
@@ -73,6 +103,28 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
         high24h: +(forex['EURUSD'] * 1.005).toFixed(4),
         low24h: +(forex['EURUSD'] * 0.995).toFixed(4),
         volume24h: 1250000000,
+      },
+      {
+        symbol: 'GBPUSD',
+        pair: 'GBP/USD (FOREX)',
+        baseAsset: 'GBP',
+        quoteAsset: 'USD',
+        price: forex['GBPUSD'],
+        change24h: 0.28,
+        high24h: +(forex['GBPUSD'] * 1.004).toFixed(4),
+        low24h: +(forex['GBPUSD'] * 0.996).toFixed(4),
+        volume24h: 980000000,
+      },
+      {
+        symbol: 'USDJPY',
+        pair: 'USD/JPY (FOREX)',
+        baseAsset: 'USD',
+        quoteAsset: 'JPY',
+        price: forex['USDJPY'],
+        change24h: -0.15,
+        high24h: +(forex['USDJPY'] * 1.003).toFixed(2),
+        low24h: +(forex['USDJPY'] * 0.997).toFixed(2),
+        volume24h: 1100000000,
       }
     ];
 
@@ -118,10 +170,24 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
   }
 }
 
+// Symbols with no real OHLC feed wired in (Binance only lists crypto pairs).
+// Candles for these are a synthetic random-walk seeded off the live spot
+// price above -- NOT real historical data. Strategy signals fired on these
+// symbols are illustrative only, not backtested against real history.
+const SYNTHETIC_SYMBOLS: Record<string, number> = {
+  XAUUSDT: 0, // resolved to liveGoldPrice at call time
+  XAGUSDT: 0, // resolved to liveSilverPrice at call time
+  EURUSD: 1.0845,
+  GBPUSD: 1.2980,
+  USDJPY: 152.40,
+};
+
 // Fetch Klines from Binance Futures API
 export async function fetchKlines(symbol: string, interval = '15m', limit = 50): Promise<CandleData[]> {
-  if (symbol === 'XAUUSDT' || symbol === 'EURUSD') {
-    const base = symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845;
+  if (symbol in SYNTHETIC_SYMBOLS) {
+    const base = symbol === 'XAUUSDT' ? liveGoldPrice
+      : symbol === 'XAGUSDT' ? liveSilverPrice
+      : SYNTHETIC_SYMBOLS[symbol];
     return generateGoldCandles(limit, base);
   }
 
@@ -152,8 +218,11 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
 
 // Fetch Order Book from Binance Futures API
 export async function fetchOrderBook(symbol: string): Promise<{ bids: OrderBookItem[]; asks: OrderBookItem[] }> {
-  if (symbol === 'XAUUSDT' || symbol === 'EURUSD') {
-    return generateMockOrderBook(symbol === 'XAUUSDT' ? liveGoldPrice : 1.0845);
+  if (symbol in SYNTHETIC_SYMBOLS) {
+    const base = symbol === 'XAUUSDT' ? liveGoldPrice
+      : symbol === 'XAGUSDT' ? liveSilverPrice
+      : SYNTHETIC_SYMBOLS[symbol];
+    return generateMockOrderBook(base);
   }
 
   try {
@@ -224,10 +293,14 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
               }
             });
 
-            // Live Gold tick jitter
+            // Live metals/forex tick jitter (synthetic -- no real feed for these)
             liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.12).toFixed(2);
+            liveSilverPrice = +(liveSilverPrice + (Math.random() - 0.49) * 0.02).toFixed(3);
             prices['XAUUSDT'] = liveGoldPrice;
+            prices['XAGUSDT'] = liveSilverPrice;
             prices['EURUSD'] = +(1.0845 + (Math.random() - 0.49) * 0.0008).toFixed(4);
+            prices['GBPUSD'] = +(1.2980 + (Math.random() - 0.49) * 0.0009).toFixed(4);
+            prices['USDJPY'] = +(152.40 + (Math.random() - 0.49) * 0.08).toFixed(2);
 
             onPriceUpdate(prices);
           }
