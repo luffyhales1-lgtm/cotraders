@@ -68,31 +68,11 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
   try {
     const forex = await fetchLiveForexRates();
 
+    // Gold (XAUUSDT) and silver (XAGUSDT) are real Binance USDT-M perpetual
+    // futures now -- they come through in the live fapi/ticker/24hr response
+    // below just like any crypto pair, so they are NOT hardcoded here.
+    // Only true forex majors (no Binance listing) are synthetic entries.
     const forexTickers: CoinTicker[] = [
-      {
-        symbol: 'XAUUSDT',
-        pair: 'XAU/USD (GOLD SPOT)',
-        baseAsset: 'XAU',
-        quoteAsset: 'USD',
-        price: forex['XAUUSD'],
-        change24h: 1.84,
-        high24h: +(forex['XAUUSD'] + 14.20).toFixed(2),
-        low24h: +(forex['XAUUSD'] - 16.80).toFixed(2),
-        volume24h: 840000000,
-        isGold: true,
-      },
-      {
-        symbol: 'XAGUSDT',
-        pair: 'XAG/USD (SILVER SPOT)',
-        baseAsset: 'XAG',
-        quoteAsset: 'USD',
-        price: forex['XAGUSD'],
-        change24h: 1.12,
-        high24h: +(forex['XAGUSD'] + 0.45).toFixed(3),
-        low24h: +(forex['XAGUSD'] - 0.55).toFixed(3),
-        volume24h: 210000000,
-        isGold: true,
-      },
       {
         symbol: 'EURUSD',
         pair: 'EUR/USD (FOREX)',
@@ -139,16 +119,17 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
       const filtered = data.filter((item: any) => item.symbol && item.symbol.endsWith('USDT'));
       filtered.sort((a: any, b: any) => parseFloat(b.quoteVolume || '0') - parseFloat(a.quoteVolume || '0'));
 
-      // Binance Futures lists roughly 400-500 USDT-margined perpetuals total --
-      // that's the real maximum available (there's no way to reach "2000" on
-      // this exchange). We return all of them here instead of an arbitrary
-      // top-100 cap, so the scanner page can search/filter the full list.
+      // Binance Futures currently lists ~750-800 USDT-margined perpetuals
+      // total (including the XAUUSDT/XAGUSDT TradFi contracts) -- that's the
+      // real ceiling on this exchange. We return all of them here instead of
+      // an arbitrary cap, so the scanner page can search/filter the full list.
       const formatted: CoinTicker[] = filtered.map((item: any) => {
         const base = item.symbol.replace('USDT', '');
         const lastPrice = parseFloat(item.lastPrice || '0');
+        const isMetal = item.symbol === 'XAUUSDT' || item.symbol === 'XAGUSDT';
         return {
           symbol: item.symbol,
-          pair: `${base}/USDT (PERP)`,
+          pair: isMetal ? `${base}/USD (${base === 'XAU' ? 'GOLD' : 'SILVER'} PERP)` : `${base}/USDT (PERP)`,
           baseAsset: base,
           quoteAsset: 'USDT',
           price: lastPrice,
@@ -157,6 +138,7 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
           low24h: parseFloat(item.lowPrice || '0'),
           volume24h: parseFloat(item.quoteVolume || '0'),
           isFutures: true,
+          isGold: isMetal,
         };
       });
 
@@ -170,13 +152,12 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
   }
 }
 
-// Symbols with no real OHLC feed wired in (Binance only lists crypto pairs).
-// Candles for these are a synthetic random-walk seeded off the live spot
-// price above -- NOT real historical data. Strategy signals fired on these
-// symbols are illustrative only, not backtested against real history.
+// Symbols with no real OHLC feed wired in on Binance. As of Jan 2026, gold
+// (XAUUSDT) and silver (XAGUSDT) are REAL Binance USDT-M perpetual futures
+// contracts (TradFi Perpetuals) and go through the normal fapi endpoints
+// below like any crypto pair -- they are intentionally NOT in this map.
+// Only forex majors remain synthetic, since Binance does not list FX pairs.
 const SYNTHETIC_SYMBOLS: Record<string, number> = {
-  XAUUSDT: 0, // resolved to liveGoldPrice at call time
-  XAGUSDT: 0, // resolved to liveSilverPrice at call time
   EURUSD: 1.0845,
   GBPUSD: 1.2980,
   USDJPY: 152.40,
@@ -185,10 +166,7 @@ const SYNTHETIC_SYMBOLS: Record<string, number> = {
 // Fetch Klines from Binance Futures API
 export async function fetchKlines(symbol: string, interval = '15m', limit = 50): Promise<CandleData[]> {
   if (symbol in SYNTHETIC_SYMBOLS) {
-    const base = symbol === 'XAUUSDT' ? liveGoldPrice
-      : symbol === 'XAGUSDT' ? liveSilverPrice
-      : SYNTHETIC_SYMBOLS[symbol];
-    return generateGoldCandles(limit, base);
+    return generateGoldCandles(limit, SYNTHETIC_SYMBOLS[symbol]);
   }
 
   try {
@@ -219,10 +197,7 @@ export async function fetchKlines(symbol: string, interval = '15m', limit = 50):
 // Fetch Order Book from Binance Futures API
 export async function fetchOrderBook(symbol: string): Promise<{ bids: OrderBookItem[]; asks: OrderBookItem[] }> {
   if (symbol in SYNTHETIC_SYMBOLS) {
-    const base = symbol === 'XAUUSDT' ? liveGoldPrice
-      : symbol === 'XAGUSDT' ? liveSilverPrice
-      : SYNTHETIC_SYMBOLS[symbol];
-    return generateMockOrderBook(base);
+    return generateMockOrderBook(SYNTHETIC_SYMBOLS[symbol]);
   }
 
   try {
@@ -293,11 +268,9 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
               }
             });
 
-            // Live metals/forex tick jitter (synthetic -- no real feed for these)
-            liveGoldPrice = +(liveGoldPrice + (Math.random() - 0.49) * 0.12).toFixed(2);
-            liveSilverPrice = +(liveSilverPrice + (Math.random() - 0.49) * 0.02).toFixed(3);
-            prices['XAUUSDT'] = liveGoldPrice;
-            prices['XAGUSDT'] = liveSilverPrice;
+            // Real live tick for XAUUSDT/XAGUSDT already comes through the
+            // !ticker@arr stream above (they're real perpetuals) -- do not
+            // overwrite it. Only forex majors (no Binance feed) get jitter.
             prices['EURUSD'] = +(1.0845 + (Math.random() - 0.49) * 0.0008).toFixed(4);
             prices['GBPUSD'] = +(1.2980 + (Math.random() - 0.49) * 0.0009).toFixed(4);
             prices['USDJPY'] = +(152.40 + (Math.random() - 0.49) * 0.08).toFixed(2);

@@ -8,11 +8,12 @@ import { fetchKlines, fetchTopCryptos } from './binanceApi';
 export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
 
 // Fixed macro instruments that are always scanned regardless of the crypto
-// universe below: gold, silver, and the 3 majors. XAU/XAG/forex candles are
-// synthetic (see binanceApi.ts) -- everything else here is real Binance data.
+// universe below: the 3 forex majors. Binance does not list FX pairs, so
+// these stay synthetic (see binanceApi.ts). Gold (XAUUSDT) and silver
+// (XAGUSDT) are REAL Binance perpetuals now and are picked up automatically
+// by buildDynamicWatchlist() below along with every other real pair --
+// they're intentionally not hardcoded here anymore.
 export const MACRO_SCAN_WATCHLIST: ScanTarget[] = [
-  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD SPOT)', interval: '5m', isScalp: true },
-  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER SPOT)', interval: '5m', isScalp: true },
   { symbol: 'EURUSD', pair: 'EUR/USD (FOREX)', interval: '15m', isScalp: false },
   { symbol: 'GBPUSD', pair: 'GBP/USD (FOREX)', interval: '15m', isScalp: false },
   { symbol: 'USDJPY', pair: 'USD/JPY (FOREX)', interval: '15m', isScalp: false },
@@ -30,6 +31,8 @@ export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
   { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '5m', isScalp: true },
   { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', interval: '15m', isScalp: false },
   { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', interval: '15m', isScalp: false },
+  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD PERP)', interval: '5m', isScalp: true },
+  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER PERP)', interval: '5m', isScalp: true },
   ...MACRO_SCAN_WATCHLIST,
 ];
 
@@ -39,15 +42,18 @@ const DYNAMIC_LIST_TTL_MS = 5 * 60 * 1000; // refresh top-volume ranking every 5
 
 /**
  * Builds the real scan universe: the top `topN` USDT perpetuals by 24h quote
- * volume (refreshed from live Binance data every 5 minutes) plus the fixed
- * macro instruments (gold, silver, EUR/USD, GBP/USD, USD/JPY). This is what
- * "scan all coins" resolves to in practice -- Binance Futures lists ~400-500
- * USDT pairs total, and fetching full 200-candle history for all of them
- * every single minute would blow through public rate limits and take far
- * longer than the 60s cycle. `topN` defaults to 60, which comfortably
- * finishes a full pass (with concurrency, see below) inside the 60s window.
+ * volume (refreshed from live Binance data every 5 minutes -- this includes
+ * XAUUSDT/XAGUSDT automatically, since they're real perpetuals) plus the
+ * fixed forex majors (EUR/USD, GBP/USD, USD/JPY, which Binance doesn't
+ * list). This is what "scan all coins" resolves to in practice -- Binance
+ * Futures currently lists ~750-800 USDT pairs total (not 2000 -- that's a
+ * hard ceiling on the exchange itself, not a limit this app imposes), and
+ * fetching full 200-candle history for all of them every single minute
+ * would blow through public rate limits and take far longer than the 60s
+ * cycle. `topN` defaults to 150, tuned to comfortably finish a full pass
+ * (with concurrency, see below) inside the 60s window.
  */
-export async function buildDynamicWatchlist(topN = 60): Promise<ScanTarget[]> {
+export async function buildDynamicWatchlist(topN = 150): Promise<ScanTarget[]> {
   const now = Date.now();
   if (cachedDynamicWatchlist && now - cachedDynamicWatchlistAt < DYNAMIC_LIST_TTL_MS) {
     return cachedDynamicWatchlist;
@@ -63,7 +69,7 @@ export async function buildDynamicWatchlist(topN = 60): Promise<ScanTarget[]> {
       .map((t): ScanTarget => ({
         symbol: t.symbol,
         pair: t.pair,
-        interval: '5m',
+        interval: '1m',
         isScalp: true,
       }));
 
@@ -77,7 +83,7 @@ export async function buildDynamicWatchlist(topN = 60): Promise<ScanTarget[]> {
   }
 }
 
-const SCAN_CONCURRENCY = 8;
+const SCAN_CONCURRENCY = 16;
 
 /**
  * Scans a watchlist against REAL candle data and REAL strategy math.

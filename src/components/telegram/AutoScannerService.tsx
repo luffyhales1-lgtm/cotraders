@@ -302,7 +302,7 @@ export const AutoScannerService: React.FC = () => {
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
               Runs all 21 strategies (incl. ICT/SMC, footprint delta, order blocks) against real Binance candles every 60s,
-              across the top {totalScannedCount - MACRO_COUNT} pairs by volume plus gold, silver &amp; forex. Only dispatches when a strategy genuinely triggers.
+              across the top {totalScannedCount - MACRO_COUNT} pairs by volume (incl. real gold &amp; silver perpetuals) plus 3 forex majors. Only dispatches when a strategy genuinely triggers.
             </p>
           </div>
         </div>
