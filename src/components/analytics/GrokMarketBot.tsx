@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { fetchTopCryptos } from '@/services/binanceApi';
-import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
-import { 
-  Bot, 
-  Sparkles, 
-  Zap, 
-  Send, 
-  CheckCircle2, 
-  BarChart2, 
-  TrendingUp, 
-  ShieldCheck,
+import { runGrokDeepResearch, signalToTelegramPayload, GrokResearchResult } from '@/services/grokResearchService';
+import { Signal } from '@/types/trading';
+import {
+  Bot,
+  Sparkles,
+  Send,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
   Globe as GlobeIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Gauge,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,108 +22,81 @@ export const GrokMarketBot: React.FC = () => {
   const { telegramBotToken, telegramChatId, dispatchTelegramSignal } = useAuth();
 
   const [isScanning, setIsScanning] = useState<boolean>(false);
-  const [marketStatement, setMarketStatement] = useState<string>(
-    'Global Crypto Futures & Gold Spot markets exhibit strong bullish accumulation in 1m/5m timeframe. Cumulative Volume Delta (+1,840) signals institutional demand sweep above key support zones.'
-  );
-  const [grokSignal, setGrokSignal] = useState<any | null>(null);
+  const [research, setResearch] = useState<GrokResearchResult | null>(null);
+  const [leadChart, setLeadChart] = useState<string | null>(null);
+  const mounted = useRef(true);
 
   const handleRunGrokScan = async () => {
     setIsScanning(true);
-    toast.info('Grok AI Quantitative Agent scanning Binance Futures & Gold Live API...');
+    toast.info('Grok AI deep-research agent scanning the live market across multiple coins…');
+    try {
+      const result = await runGrokDeepResearch(6);
+      if (!mounted.current) return;
+      setResearch(result);
 
-    setTimeout(async () => {
-      const tickers = await fetchTopCryptos();
-      const goldCoin = tickers.find(t => t.symbol === 'XAUUSDT') || { pair: 'XAU/USD (GOLD SPOT)', price: 2894.50, change24h: 1.84 };
-      const btcCoin = tickers.find(t => t.symbol === 'BTCUSDT') || { pair: 'BTC/USDT (PERP)', price: 96940.00, change24h: 4.12 };
+      const lead = result.topSignals[0];
+      if (lead) {
+        const payload = signalToTelegramPayload(lead);
+        setLeadChart(payload.chartScreenshotUrl ?? null);
 
-      const selected = Math.random() > 0.4 ? goldCoin : btcCoin;
-      const isLong = selected.change24h >= 0;
-      const price = selected.price;
-      const digits = selected.price < 10 ? 4 : 2;
-
-      const tp1 = +(price * (isLong ? 1.011 : 0.989)).toFixed(digits);
-      const tp2 = +(price * (isLong ? 1.025 : 0.975)).toFixed(digits);
-      const tp3 = +(price * (isLong ? 1.048 : 0.952)).toFixed(digits);
-      const sl = +(price * (isLong ? 0.990 : 1.010)).toFixed(digits);
-
-      const supp1 = +(price * 0.985).toFixed(digits);
-      const res1 = +(price * 1.018).toFixed(digits);
-      const delta = isLong ? +1840 : -1420;
-
-      const chartImg = generateTradeSetupChartImage({
-        pair: selected.pair,
-        type: isLong ? 'LONG' : 'SHORT',
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
-        support1: supp1,
-        resistance1: res1,
-        timeframe: '5m Scalp',
-        strategy: 'Grok AI Footprint Delta & SMC OB',
-        winProbability: 95,
-        footprintDelta: delta,
-        orderBlockZone: `5m Grok OB Zone ($${supp1})`,
-      });
-
-      const statement = `Grok AI Market Statement (${new Date().toLocaleTimeString()}): ${selected.pair} demonstrates explosive institutional volume sweep. Cumulative Delta (${delta > 0 ? '+' : ''}${delta}) confirms order block mitigation. Target TP1 $${tp1} with 95% confidence.`;
-      
-      setMarketStatement(statement);
-
-      const generated = {
-        pair: selected.pair,
-        type: isLong ? ('LONG' as const) : ('SHORT' as const),
-        strategy: 'Grok AI Footprint Delta & SMC OB',
-        timeframe: '5m Scalp Confluence',
-        entryPrice: price,
-        target1: tp1,
-        target2: tp2,
-        target3: tp3,
-        stopLoss: sl,
-        support1: supp1,
-        resistance1: res1,
-        leverage: '25x - 50x',
-        winProbability: 95,
-        riskReward: '1:1.2 (Grok Scalp)',
-        rationale: statement,
-        chartScreenshotUrl: chartImg,
-        footprintDelta: delta,
-      };
-
-      setGrokSignal(generated);
-      setIsScanning(false);
-
-      if (telegramBotToken && telegramChatId) {
-        await dispatchTelegramSignal(generated);
-        toast.success(`Grok AI Market Statement & ${selected.pair} Scalp Signal with Chart Screenshot sent to Telegram!`);
+        // Auto-dispatch the single strongest REAL setup to Telegram if configured.
+        if (telegramBotToken && telegramChatId) {
+          await dispatchTelegramSignal(payload);
+          toast.success(`Grok AI statement + strongest setup (${lead.pair}) dispatched to Telegram.`);
+        } else {
+          toast.success(`Grok AI deep research complete — ${result.topSignals.length} setups found. Add your Telegram bot in Admin to auto-dispatch.`);
+        }
       } else {
-        toast.success(`Grok AI Analysis Complete for ${selected.pair}! Configure Telegram Bot Token in Admin Panel to dispatch.`);
+        setLeadChart(null);
+        toast.success('Grok AI deep research complete — no high-conviction setups this pass.');
       }
-    }, 1500);
+    } catch (e) {
+      console.error('[GrokMarketBot] deep research failed:', e);
+      toast.error('Grok AI scan failed — check your connection and try again.');
+    } finally {
+      if (mounted.current) setIsScanning(false);
+    }
   };
 
   useEffect(() => {
+    mounted.current = true;
     handleRunGrokScan();
+    return () => {
+      mounted.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const overview = research?.overview;
+  const biasColor =
+    overview?.bias === 'BULLISH' ? 'text-emerald-400' : overview?.bias === 'BEARISH' ? 'text-rose-400' : 'text-slate-300';
+
+  const resend = async (sig: Signal) => {
+    const payload = signalToTelegramPayload(sig);
+    if (telegramBotToken && telegramChatId) {
+      await dispatchTelegramSignal(payload);
+      toast.success(`${sig.pair} setup re-sent to Telegram.`);
+    } else {
+      toast.error('Add your Telegram bot token & chat ID in the Admin panel first.');
+    }
+  };
 
   return (
     <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-cyan-950/70 to-slate-900 border border-cyan-500/50 shadow-2xl text-slate-100 font-sans">
-      
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center shrink-0">
-            <Bot className="h-6 w-6 text-cyan-400 animate-bounce" />
+            <Bot className={`h-6 w-6 text-cyan-400 ${isScanning ? 'animate-bounce' : ''}`} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-black text-lg text-slate-100">Grok AI Quantitative Intelligence & Live Market Statement</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-black text-lg text-slate-100">Grok AI Deep-Research Intelligence</h3>
               <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/40 text-[10px]">
-                <Sparkles className="h-3 w-3 text-cyan-400" /> GROK AI ENGINE
+                <Sparkles className="h-3 w-3 text-cyan-400" /> MULTI-COIN ENGINE
               </Badge>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Scans Binance Futures & Gold Live API, compiles market macro statements, and dispatches high-win signals with screenshots to Telegram.
+              Runs every strategy across the full live universe, synthesizes a real top-down market statement, and dispatches the strongest setups with charts to Telegram.
             </p>
           </div>
         </div>
@@ -134,7 +107,7 @@ export const GrokMarketBot: React.FC = () => {
           className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-black text-xs py-5 px-6 gap-2 shadow-lg shadow-cyan-950/40"
         >
           <Sparkles className={`h-4 w-4 ${isScanning ? 'animate-spin' : ''}`} />
-          {isScanning ? 'Grok AI Scanning Market...' : 'Run Grok AI Market Scan Now'}
+          {isScanning ? 'Grok AI researching…' : 'Run Grok Deep Research'}
         </Button>
       </div>
 
@@ -143,60 +116,99 @@ export const GrokMarketBot: React.FC = () => {
         <span className="text-cyan-400 font-bold font-sans block text-sm mb-1 flex items-center gap-2">
           <GlobeIcon className="h-4 w-4 text-cyan-400" /> GROK AI LIVE MARKET STATEMENT
         </span>
-        <p className="text-slate-300">{marketStatement}</p>
+        <p className="text-slate-300">
+          {research?.statement ?? 'Running the first deep-research pass across the live market…'}
+        </p>
       </div>
 
-      {/* Grok Signal Output */}
-      {grokSignal && (
-        <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-3">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-            <span className="font-extrabold text-slate-100 text-sm font-sans flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-              {grokSignal.pair} - GROK HIGH WIN SCALP
-            </span>
-            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-mono text-xs">
-              {grokSignal.winProbability}% ACCURACY
-            </Badge>
+      {/* Breadth snapshot */}
+      {overview && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4 font-mono text-xs">
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span className="text-[10px] text-slate-400 font-sans block">NET BIAS</span>
+            <span className={`text-lg font-black ${biasColor}`}>{overview.bias}</span>
           </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-xs">
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-              <span className="text-[10px] text-slate-400 font-sans block">ENTRY PRICE</span>
-              <span className="font-bold text-slate-100">${grokSignal.entryPrice}</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-              <span className="text-[10px] text-emerald-400 font-sans block">TP1 (SCALP)</span>
-              <span className="font-bold text-emerald-400">${grokSignal.target1}</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-              <span className="text-[10px] text-emerald-400 font-sans block">TP2</span>
-              <span className="font-bold text-emerald-400">${grokSignal.target2}</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-              <span className="text-[10px] text-rose-400 font-sans block">STOP LOSS</span>
-              <span className="font-bold text-rose-400">${grokSignal.stopLoss}</span>
-            </div>
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span className="text-[10px] text-slate-400 font-sans block">BREADTH</span>
+            <span className="text-lg font-black text-indigo-400">{overview.biasStrengthPct}%</span>
           </div>
-
-          <div className="rounded-xl overflow-hidden border border-slate-800 shadow-md max-w-xl">
-            <div className="p-2 bg-slate-900 text-[10px] font-bold text-cyan-400 flex items-center justify-between">
-              <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Grok AI Chart Setup Screenshot</span>
-              <span className="text-slate-400">Sent to Telegram</span>
-            </div>
-            <img src={grokSignal.chartScreenshotUrl} alt="Grok Chart Screenshot" className="w-full h-auto" />
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span className="text-[10px] text-slate-400 font-sans block">AVG RSI(14)</span>
+            <span className="text-lg font-black text-cyan-400">{overview.avgRsi ?? '—'}</span>
           </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
-              <Send className="h-3.5 w-3.5" /> Dispatched to Telegram Bot
-            </span>
-            <Button size="sm" onClick={() => dispatchTelegramSignal(grokSignal)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs gap-1">
-              <Send className="h-3 w-3" /> Re-Send to Telegram
-            </Button>
+          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <span className="text-[10px] text-slate-400 font-sans block">SETUPS LIVE</span>
+            <span className="text-lg font-black text-amber-400">{overview.signalCount}</span>
           </div>
         </div>
       )}
 
+      {/* Strongest lead setup + chart */}
+      {research && research.topSignals[0] && (
+        <div className="p-4 rounded-2xl bg-slate-950 border border-emerald-500/40 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+            <span className="font-extrabold text-slate-100 text-sm font-sans flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              {research.topSignals[0].pair} — STRONGEST LIVE SETUP
+            </span>
+            <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-mono text-xs">
+              {research.topSignals[0].confidenceScore ?? research.topSignals[0].winProbability}% CONVICTION
+            </Badge>
+          </div>
+
+          {leadChart && (
+            <div className="rounded-xl overflow-hidden border border-slate-800 shadow-md max-w-xl">
+              <div className="p-2 bg-slate-900 text-[10px] font-bold text-cyan-400 flex items-center justify-between">
+                <span className="flex items-center gap-1"><ImageIcon className="h-3 w-3" /> Grok AI Chart Setup</span>
+                <span className="text-slate-400">{telegramBotToken && telegramChatId ? 'Sent to Telegram' : 'Configure bot to dispatch'}</span>
+              </div>
+              <img src={leadChart} alt="Grok Chart Setup" className="w-full h-auto" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Multi-coin deep research list */}
+      {research && research.topSignals.length > 0 && (
+        <div className="mt-4">
+          <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-2">
+            Deep research — strongest setups across multiple coins
+          </span>
+          <div className="space-y-2">
+            {research.topSignals.map(sig => {
+              const DirIcon = sig.type === 'LONG' ? TrendingUp : TrendingDown;
+              return (
+                <div key={sig.id} className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Badge className={sig.type === 'LONG' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 gap-1' : 'bg-rose-500/20 text-rose-400 border-rose-500/30 gap-1'}>
+                      <DirIcon className="h-3 w-3" /> {sig.type}
+                    </Badge>
+                    <div className="min-w-0">
+                      <span className="font-bold text-sm text-slate-100 block truncate">{sig.pair}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {sig.strategy} · Entry ${sig.entryPrice} · SL ${sig.stopLoss} · TP1 ${sig.target1}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <span className="text-sm font-black text-cyan-400 tabular-nums flex items-center gap-1 justify-end">
+                        <Gauge className="h-3 w-3" /> {sig.confidenceScore ?? '—'}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1 justify-end">
+                        <Activity className="h-3 w-3" /> RSI {sig.rsiValue ?? '—'}
+                      </span>
+                    </div>
+                    <Button size="sm" onClick={() => resend(sig)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs gap-1">
+                      <Send className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

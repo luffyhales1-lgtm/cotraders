@@ -114,14 +114,14 @@ export function bollinger(closes: number[], period = 20, mult = 2): BollingerRes
   const lower: number[] = [];
   const width: number[] = [];
   for (let i = 0; i < closes.length; i++) {
-    if (i < period - 1) { upper.push(NaN); lower.push(NaN); weight.push(NaN); continue; }
+    if (i < period - 1) { upper.push(NaN); lower.push(NaN); width.push(NaN); continue; }
     const window = closes.slice(i - period + 1, i + 1);
     const mean = mid[i];
     const variance = window.reduce((s, v) => s + (v - mean) ** 2, 0) / period;
     const sd = Math.sqrt(variance);
     upper.push(mean + mult * sd);
     lower.push(mean - mult * sd);
-    weight.push(sd === 0 ? 0 : ((mean + mult * sd) - (mean - mult * sd)) / mean);
+    width.push(sd === 0 ? 0 : ((mean + mult * sd) - (mean - mult * sd)) / mean);
   }
   return { upper, mid, lower, width };
 }

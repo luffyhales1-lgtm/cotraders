@@ -47,8 +47,13 @@ export const WhaleTracker: React.FC = () => {
     try {
       const result = await fetchWhaleTrackerData();
       setEvents(result.events);
-      setSourceErrors(result.sourceErrors || {});
-      setLastUpdated(result.fetchedAt);
+      // keep only sources that actually reported an error (values are null when healthy)
+      const activeErrors: Record<string, string> = {};
+      Object.entries(result.sourceErrors || {}).forEach(([k, v]) => {
+        if (v) activeErrors[k] = v;
+      });
+      setSourceErrors(activeErrors);
+      setLastUpdated(Date.now());
       setError(null);
     } catch (e) {
       const message =
@@ -70,7 +75,7 @@ export const WhaleTracker: React.FC = () => {
 
   if (!isVipMember) {
     return (
-      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800">
+      <div className="p-6 rounded-3xl glass-panel">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center gap-2 text-amber-400">
             <ShieldCheck className="h-5 w-5" />
@@ -82,7 +87,7 @@ export const WhaleTracker: React.FC = () => {
         </CardHeader>
         <CardContent className="text-center py-8">
           <p className="text-sm text-slate-400">
-            Upgrade to VIP to access real-time whale transaction tracking powered by CoinGlass.
+            Upgrade to VIP to access real-time whale transaction tracking — live $50k+ fills straight from the Hyperliquid perp DEX.
           </p>
           <Button onClick={() => window.location.href = '/pricing'} className="mt-4 w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs gap-1">
             Upgrade to VIP
@@ -93,7 +98,7 @@ export const WhaleTracker: React.FC = () => {
   }
 
   return (
-    <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800">
+    <div className="p-6 rounded-3xl glass-panel">
       <CardHeader className="pb-2 flex-row items-center justify-between">
         <div>
           <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-400">
@@ -102,7 +107,7 @@ export const WhaleTracker: React.FC = () => {
           </CardTitle>
           <div className="flex items-center gap-2 mt-1">
             <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 text-[10px]">
-              LIVE · COINGLASS
+              LIVE · HYPERLIQUID
             </Badge>
             {lastUpdated && (
               <span className="text-[10px] text-slate-500">Updated {timeAgo(Math.floor(lastUpdated / 1000))}</span>
@@ -135,7 +140,7 @@ export const WhaleTracker: React.FC = () => {
             <AlertTriangle className="h-6 w-6 text-amber-400 mx-auto" />
             <p className="text-sm text-slate-300 max-w-sm mx-auto">{error}</p>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              If this persists, check that COINGLASS_API_KEY is set in Supabase and that your CoinGlass plan includes whale data endpoints.
+              This live feed streams free from the Hyperliquid public API. If it stalls, it's usually a temporary network/WebSocket hiccup — retry in a moment.
             </p>
             <Button size="sm" onClick={() => loadWhaleData(true)} className="bg-purple-600 hover:bg-purple-500">
               Try again

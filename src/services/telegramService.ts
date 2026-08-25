@@ -24,6 +24,31 @@ export interface TelegramSignalPayload {
   orderBlockZone?: string;
   backtestLabel?: string;
   momentumNote?: string;
+  // enriched analysis fields
+  rsiValue?: number;
+  rsiDivergence?: 'bullish' | 'bearish' | null;
+  atrPercent?: number;
+  positionSizeNote?: string;
+  confidenceScore?: number;
+  confluenceCount?: number;
+  assetClass?: 'CRYPTO' | 'GOLD' | 'SILVER' | 'FOREX';
+  momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';
+}
+
+function assetBadge(assetClass?: string): string {
+  switch (assetClass) {
+    case 'GOLD': return '🥇 GOLD';
+    case 'SILVER': return '🥈 SILVER';
+    case 'FOREX': return '💱 FOREX';
+    default: return '🪙 CRYPTO';
+  }
+}
+
+// Turns a 0-100 conviction score into a fire-bar so it reads at a glance.
+function convictionBar(score?: number): string {
+  if (score == null) return '';
+  const flames = Math.max(1, Math.min(5, Math.round(score / 20)));
+  return '🔥'.repeat(flames) + '▫️'.repeat(5 - flames);
 }
 
 export async function sendTelegramSignalNotification(
@@ -40,36 +65,59 @@ export async function sendTelegramSignalNotification(
   const price = signal.entryPrice;
 
   const supp1 = signal.support1 || +(price * 0.985).toFixed(digits);
-  const supp2 = signal.support2 || +(price * 0.968).toFixed(digits);
   const res1 = signal.resistance1 || +(price * 1.018).toFixed(digits);
-  const res2 = signal.resistance2 || +(price * 1.036).toFixed(digits);
 
   const delta = signal.footprintDelta ?? 0;
+  const slPct = price ? Math.abs(((signal.stopLoss - price) / price) * 100).toFixed(2) : '0';
+
+  // RSI + divergence line -- exactly what the user asked for ("use rsi for
+  // every trade signal by measuring market divergence").
+  let rsiLine = '';
+  if (signal.rsiValue != null) {
+    if (signal.rsiDivergence) {
+      const confirms = (signal.rsiDivergence === 'bullish' && isLong) || (signal.rsiDivergence === 'bearish' && !isLong);
+      rsiLine = `📉 <b>RSI(14):</b> <code>${signal.rsiValue}</code> | Divergence: <b>${signal.rsiDivergence.toUpperCase()}</b> ${confirms ? '✅ (confirms)' : '⚠️ (caution)'}`;
+    } else {
+      rsiLine = `📉 <b>RSI(14):</b> <code>${signal.rsiValue}</code> | No active divergence`;
+    }
+  }
+
+  const convLine = signal.confidenceScore != null
+    ? `🎯 <b>Conviction:</b> <b>${signal.confidenceScore}/100</b> ${convictionBar(signal.confidenceScore)}`
+    : '';
+
+  const rrParts = signal.riskReward.split('/').map(s => s.trim());
 
   const text = `
-${isLong ? '🚀' : '🔻'} <b>COTRADERS LIVE SIGNAL</b> ${isLong ? '🚀' : '🔻'}
-────────────────────────────
-<b>Pair / Asset:</b> <code>${signal.pair}</code>
-<b>Signal Action:</b> ${isLong ? '🟢 BUY / LONG' : '🔴 SELL / SHORT'}
-<b>Suggested Leverage:</b> <code>${signal.leverage}</code>
-<b>Timeframe:</b> <code>${signal.timeframe}</code>
-<b>Strategy:</b> <code>${signal.strategy}</code>
-<b>Win Rate:</b> 📊 <b>${signal.winProbability ? signal.winProbability + '%' : 'N/A'}</b>${signal.backtestLabel ? `\n<i>${signal.backtestLabel}</i>` : ''}
+${isLong ? '🚀🟢' : '🔻🔴'} <b>COTRADERS LIVE SIGNAL</b> ${isLong ? '🟢🚀' : '🔴🔻'}
+━━━━━━━━━━━━━━━━━━━━
+💎 <b>Pair:</b> <code>${signal.pair}</code>  ·  ${assetBadge(signal.assetClass)}
+📊 <b>Action:</b> ${isLong ? '🟢 BUY / LONG' : '🔴 SELL / SHORT'}
+${convLine}
+⚙️ <b>Strategy:</b> <code>${signal.strategy}</code>${signal.confluenceCount && signal.confluenceCount > 1 ? ` <b>(+${signal.confluenceCount - 1} confluence)</b>` : ''}
+⏱️ <b>Timeframe:</b> <code>${signal.timeframe}</code>
+📈 <b>Backtest Win Rate:</b> <b>${signal.winProbability ? signal.winProbability + '%' : 'N/A'}</b>${signal.backtestLabel ? `\n<i>${signal.backtestLabel}</i>` : ''}
 
-<b>🎯 ENTRY:</b> <code>$${price}</code>
-<b>🛑 STOP LOSS:</b> <code>$${signal.stopLoss}</code>
+━━ 📋 <b>TRADE PLAN</b> ━━
+🎯 <b>Entry:</b> <code>$${price}</code>
+🛑 <b>Stop Loss:</b> <code>$${signal.stopLoss}</code> <i>(-${slPct}%)</i>
+✅ <b>TP1:</b> <code>$${signal.target1}</code> <i>(${rrParts[0] || ''})</i>
+✅ <b>TP2:</b> <code>$${signal.target2}</code>
+🏁 <b>TP3 (final):</b> <code>$${signal.target3}</code>
 
-<b>✅ TP1:</b> <code>$${signal.target1}</code> (${signal.riskReward.split('/')[0]?.trim()})
-<b>✅ TP2:</b> <code>$${signal.target2}</code>
-<b>✅ TP3 (final):</b> <code>$${signal.target3}</code>
+━━ ⚖️ <b>RISK &amp; SIZING</b> ━━
+🔧 <b>Leverage:</b> <code>${signal.leverage}</code>
+💰 <b>Trade Size:</b> <i>${signal.positionSizeNote || 'Risk 1-2% of account per trade.'}</i>
+📐 <b>R:R:</b> <code>${signal.riskReward}</code>
 
-📐 <b>MARKET READ</b>
-• <b>Volume Delta (buy-sell, real):</b> <code>${delta > 0 ? '+' : ''}${delta}</code>
-• <b>Recent Support:</b> <code>$${supp1}</code> | <b>Recent Resistance:</b> <code>$${res1}</code>
-${signal.momentumNote ? `• <b>Momentum:</b> <i>${signal.momentumNote}</i>` : ''}
+━━ 🔬 <b>MARKET READ</b> ━━
+📊 <b>Footprint Delta (real buy-sell):</b> <code>${delta > 0 ? '+' : ''}${delta}</code>
+${rsiLine}
+🟢 <b>Support:</b> <code>$${supp1}</code>  ·  🔴 <b>Resistance:</b> <code>$${res1}</code>
+${signal.momentumNote ? `⚡ <b>Momentum:</b> <i>${signal.momentumNote}</i>` : ''}
 
-💡 <b>Why this fired:</b> <i>${signal.rationale}</i>
-────────────────────────────
+💡 <b>Why it fired:</b> <i>${signal.rationale}</i>
+━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Backtested performance, not a guarantee. Size positions responsibly.</i>
   `.trim();
 
@@ -120,29 +168,30 @@ export async function sendTpHitTelegramNotification(
   if (tpHitLevel === 'SL') {
     emoji = '🛑';
     statusText = `<b>STOP LOSS TRIGGERED</b>`;
-    guidance = `Trade invalidated at <code>$${price}</code>. Strategy conditions no longer hold — exit if not already flat.`;
+    guidance = `❌ Trade invalidated at <code>$${price}</code>. Strategy conditions no longer hold — exit if not already flat.`;
   } else if (tpHitLevel === 'TP3') {
     emoji = '🏁';
-    statusText = `<b>TP3 HIT — FINAL TARGET</b>`;
-    guidance = `Full target reached at <code>$${price}</code>. Trade complete.`;
+    statusText = `<b>TP3 HIT — FINAL TARGET 🎉</b>`;
+    guidance = `✅ Full target reached at <code>$${price}</code>. <b>Close the remaining position — trade complete.</b>`;
   } else {
     emoji = tpHitLevel === 'TP1' ? '✅' : '🎯';
-    const continuationLine = momentum.status === 'HIGH_MOMENTUM_CONTINUATION'
-      ? `⚡ <b>Momentum continuing</b> — conditions still favor pushing toward the next target. Consider holding a runner.`
+    const nextTarget = tpHitLevel === 'TP1' ? 'TP2' : 'TP3';
+    const decision = momentum.status === 'HIGH_MOMENTUM_CONTINUATION'
+      ? `🟢 <b>HOLD / CONTINUE</b> — market still has momentum. Keep a runner toward <b>${nextTarget}</b>, trail your SL up to protect gains.`
       : momentum.status === 'MOMENTUM_DEPLETING_SECURE_PROFIT'
-        ? `⚠️ <b>Momentum fading</b> — consider securing profit here / trailing SL to breakeven ($${price}).`
-        : `➖ <b>Momentum mixed</b> — no strong edge either way, use your own judgment on holding vs securing.`;
-    guidance = `${continuationLine}\n<i>${momentum.note}</i>`;
+        ? `🔴 <b>TAKE PROFIT NOW</b> — momentum is fading. Bank the win here (or close most of the position) and move SL to breakeven (<code>$${price}</code>).`
+        : `🟡 <b>PARTIAL / YOUR CALL</b> — momentum is mixed. Take part off the table and trail SL to breakeven (<code>$${price}</code>).`;
+    guidance = `${decision}\n<i>${momentum.note}</i>`;
   }
 
   const text = `
 ${emoji} <b>TRADE UPDATE — ${pair}</b> ${emoji}
-────────────────────────────
+━━━━━━━━━━━━━━━━━━━━
 ${statusText}
-Price: <code>$${price}</code>
+💵 Price: <code>$${price}</code>
 
 ${guidance}
-────────────────────────────
+━━━━━━━━━━━━━━━━━━━━
 🤖 <i>CoTraders real-time strategy engine</i>
   `.trim();
 

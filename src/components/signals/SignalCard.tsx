@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Sparkles, 
-  Zap, 
-  Crown, 
-  ArrowUpRight, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  Zap,
+  Crown,
+  ArrowUpRight,
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
@@ -13,13 +13,19 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Clock,
-  Target
+  Target,
+  BookMarked,
+  Activity,
+  Gauge,
+  Waves,
+  Scale
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
+import { addPaperTradeFromSignal } from '@/services/paperTradingService';
 import { toast } from 'sonner';
 
 interface SignalCardProps {
@@ -34,6 +40,31 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onSelectSymbol }
 
   const isLocked = signal.isVipOnly && !isVipMember;
   const isLong = signal.type === 'LONG';
+
+  // ---- Pro analysis display helpers (all values are engine-computed from real candles) ----
+  const conf = signal.confidenceScore ?? null;
+  const confColor =
+    conf == null ? 'text-slate-400'
+    : conf >= 80 ? 'text-amber-300'
+    : conf >= 65 ? 'text-emerald-400'
+    : conf >= 50 ? 'text-cyan-400'
+    : 'text-slate-300';
+  const rsi = signal.rsiValue ?? null;
+  const rsiColor =
+    rsi == null ? 'text-slate-300'
+    : rsi >= 70 ? 'text-rose-400'
+    : rsi <= 30 ? 'text-emerald-400'
+    : 'text-slate-200';
+  const momentumLabel =
+    signal.momentumStatus === 'HIGH_MOMENTUM_CONTINUATION' ? 'Strong · hold'
+    : signal.momentumStatus === 'MOMENTUM_DEPLETING_SECURE_PROFIT' ? 'Fading · secure'
+    : 'Neutral';
+  const momentumColor =
+    signal.momentumStatus === 'HIGH_MOMENTUM_CONTINUATION' ? 'text-emerald-400'
+    : signal.momentumStatus === 'MOMENTUM_DEPLETING_SECURE_PROFIT' ? 'text-amber-400'
+    : 'text-slate-300';
+  const divergenceConfirms =
+    signal.rsiDivergence && ((signal.rsiDivergence === 'bullish' && isLong) || (signal.rsiDivergence === 'bearish' && !isLong));
 
   // Dynamic Chart Setup Screenshot Data URL
   const chartImage = generateTradeSetupChartImage({
@@ -88,6 +119,11 @@ Platform: LiveTrading AI Pro`;
     });
   };
 
+  const handleTakePaperTrade = () => {
+    addPaperTradeFromSignal(signal);
+    toast.success(`${signal.pair} ${signal.type} added to your paper-trading journal. Track it on the Journal page.`);
+  };
+
   return (
     <Card className={`relative overflow-hidden bg-slate-900/95 border transition-all duration-400 ${isLocked ? 'border-amber-500/30' : isLong ? 'border-emerald-500/40 hover:border-emerald-500/70 shadow-emerald-950/30' : 'border-rose-500/40 hover:border-rose-500/70 shadow-rose-950/30'} shadow-xl`}>
       
@@ -136,8 +172,7 @@ Platform: LiveTrading AI Pro`;
         {isLocked ? (
           <div className="relative py-8 px-6 bg-slate-950/85 rounded-xl border border-amber-500/30 text-center flex flex-col items-center justify-center my-4 backdrop-blur-sm">
             <div className="h-12 w-12 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mb-3">
-              {/* Replaced Lock icon with text to avoid Illegal constructor error */}
-              <span className="h-7 w-7 text-amber-400">LOCK</span>
+              <ShieldCheck className="h-7 w-7 text-amber-400" />
             </div>
             <h4 className="font-extrabold text-sm text-slate-100">VIP Exclusive AI Signal</h4>
             <p className="text-xs text-slate-400 mt-2 max-w-xs">
@@ -177,6 +212,64 @@ Platform: LiveTrading AI Pro`;
 
             </div>
 
+            {/* Pro analysis metrics — every value below is computed by the engine
+                from real candles (no placeholders). */}
+            <div className="grid grid-cols-3 gap-2 mb-3 font-mono">
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="text-[9px] text-slate-400 block font-sans uppercase tracking-wider flex items-center gap-1">
+                  <Gauge className="h-3 w-3" /> Conviction
+                </span>
+                <span className={`font-black text-sm ${confColor}`}>
+                  {conf ?? '--'}<span className="text-slate-600 text-[9px]">/100</span>
+                </span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="text-[9px] text-slate-400 block font-sans uppercase tracking-wider flex items-center gap-1">
+                  <Activity className="h-3 w-3" /> RSI(14)
+                </span>
+                <span className={`font-black text-sm ${rsiColor}`}>{rsi ?? '--'}</span>
+              </div>
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="text-[9px] text-slate-400 block font-sans uppercase tracking-wider flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Momentum
+                </span>
+                <span className={`font-black text-[11px] ${momentumColor}`}>{momentumLabel}</span>
+              </div>
+            </div>
+
+            {/* Divergence / confluence / footprint chips */}
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {signal.rsiDivergence ? (
+                <Badge className={`text-[10px] font-bold ${divergenceConfirms ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}`}>
+                  {signal.rsiDivergence === 'bullish' ? '↑' : '↓'} {signal.rsiDivergence} divergence {divergenceConfirms ? '(confirms)' : '(caution)'}
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-400">No RSI divergence</Badge>
+              )}
+              {(signal.confluenceCount ?? 0) > 1 && (
+                <Badge className="text-[10px] bg-indigo-500/15 text-indigo-300 border-indigo-500/30 font-bold">
+                  {signal.confluenceCount}× strategy confluence
+                </Badge>
+              )}
+              {signal.atrPercent != null && (
+                <Badge variant="outline" className="text-[10px] border-slate-800 text-slate-300 gap-1">
+                  <Waves className="h-3 w-3" /> ATR {signal.atrPercent}%
+                </Badge>
+              )}
+              {signal.footprintDelta != null && (
+                <Badge variant="outline" className={`text-[10px] border-slate-800 gap-1 ${signal.footprintDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <BarChart2 className="h-3 w-3" /> CVD {signal.footprintDelta >= 0 ? '+' : ''}{signal.footprintDelta}
+                </Badge>
+              )}
+            </div>
+
+            {signal.positionSizeNote && (
+              <div className="flex items-start gap-2 text-[11px] text-slate-300 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80 mb-3">
+                <Scale className="h-3.5 w-3.5 text-cyan-400 mt-0.5 shrink-0" />
+                <span><span className="text-slate-400 font-bold">Position sizing:</span> {signal.positionSizeNote}</span>
+              </div>
+            )}
+
             <p className="text-xs text-slate-400 bg-slate-950/60 p-3 rounded-lg border border-slate-800/80 mb-4 leading-relaxed">
               <span className="text-slate-300 font-bold">AI Rationale:</span> {signal.rationale}
             </p>
@@ -202,10 +295,10 @@ Platform: LiveTrading AI Pro`;
                   Telegram
                 </Button>
               ) : onSelectSymbol ? (
-                <Button 
+                <Button
                   onClick={() => onSelectSymbol(signal.symbol)}
-                  variant="outline" 
-                  size="sm" 
+                  variant="outline"
+                  size="sm"
                   className="border-slate-800 hover:bg-slate-800 text-slate-200 text-xs font-bold gap-2"
                 >
                   <Target className="h-4 w-4 text-indigo-400" />
@@ -213,6 +306,16 @@ Platform: LiveTrading AI Pro`;
                 </Button>
               ) : null}
             </div>
+
+            <Button
+              onClick={handleTakePaperTrade}
+              variant="outline"
+              size="sm"
+              className="w-full mt-3 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-300 text-xs font-bold gap-1.5"
+            >
+              <BookMarked className="h-4 w-4" />
+              Take Paper Trade (track risk-free)
+            </Button>
           </div>
         )}
 
@@ -221,7 +324,7 @@ Platform: LiveTrading AI Pro`;
       {/* Chart Screenshot Modal */}
       {showChartModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-[480px] w-full p-6 overflow-hidden shadow-2xl">
+          <div className="glass-panel rounded-2xl max-w-[480px] w-full p-6 overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
               <span className="font-bold text-sm text-slate-100 flex items-center gap-2.5">
                 <ImageIcon className="h-5 w-5 text-cyan-400" />

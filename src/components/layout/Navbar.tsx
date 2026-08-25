@@ -17,7 +17,8 @@ import {
   Settings,
   Menu,
   X,
-  Lock
+  Lock,
+  BookMarked
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/signals', label: 'AI Signals', icon: Sparkles, iconColor: 'text-cyan-400', vipOnly: true },
   { path: '/charts', label: 'Pro Charts', icon: LineChart, iconColor: 'text-indigo-400', vipOnly: true },
   { path: '/scanner', label: '1000+ Scanner', icon: Scan, iconColor: 'text-amber-400', vipOnly: true },
+  { path: '/journal', label: 'Paper Journal', icon: BookMarked, iconColor: 'text-emerald-400' },
   { path: '/news', label: 'News', icon: Newspaper, iconColor: 'text-sky-400' },
   { path: '/analytics', label: 'Analytics', icon: Award, iconColor: 'text-purple-400' },
   { path: '/bot-settings', label: 'Bot Settings', icon: Settings, iconColor: 'text-teal-400', vipOnly: true },

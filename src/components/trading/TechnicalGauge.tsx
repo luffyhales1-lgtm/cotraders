@@ -29,7 +29,7 @@ export const TechnicalGauge: React.FC<TechnicalGaugeProps> = ({ pair, price, cha
   }
 
   return (
-    <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl text-slate-100 font-sans">
+    <div className="p-5 rounded-2xl glass-panel shadow-xl text-slate-100 font-sans">
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">

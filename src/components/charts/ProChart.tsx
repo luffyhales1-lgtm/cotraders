@@ -86,7 +86,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
   });
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+    <div className="glass-panel rounded-3xl overflow-hidden shadow-2xl">
       
       {/* Terminal Header Bar */}
       <div className="bg-slate-950 p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
@@ -114,7 +114,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
             <div className="text-[10px] text-slate-400">Real-time Live Tick</div>
           </div>
 
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
+          <div className="flex items-center glass-panel rounded-xl p-1 gap-1">
             {['1m', '5m', '15m', '1h', '4h', '1d'].map(tf => (
               <button
                 key={tf}
@@ -225,7 +225,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
             </div>
 
             {/* Mid Price */}
-            <div className="my-2 py-1.5 px-2 bg-slate-900 border border-slate-800 text-center rounded font-bold text-slate-100 flex items-center justify-between">
+            <div className="my-2 py-1.5 px-2 glass-panel text-center rounded font-bold text-slate-100 flex items-center justify-between">
               <span className="text-[10px] text-slate-400 font-sans">MID PRICE</span>
               <span>${currentPrice < 1 ? currentPrice.toFixed(4) : currentPrice.toLocaleString()}</span>
             </div>

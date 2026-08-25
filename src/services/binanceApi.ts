@@ -161,6 +161,12 @@ const SYNTHETIC_SYMBOLS: Record<string, number> = {
   EURUSD: 1.0845,
   GBPUSD: 1.2980,
   USDJPY: 152.40,
+  AUDUSD: 0.6580,
+  USDCAD: 1.3720,
+  USDCHF: 0.8810,
+  NZDUSD: 0.6020,
+  EURJPY: 165.30,
+  GBPJPY: 197.80,
 };
 
 // Fetch Klines from Binance Futures API

@@ -58,7 +58,7 @@ const UPCOMING_EVENTS: EconomicEvent[] = [
 
 export const EconomicCalendar: React.FC = () => {
   return (
-    <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl font-sans text-slate-100">
+    <div className="p-5 rounded-2xl glass-panel shadow-xl font-sans text-slate-100">
       
       <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
         <div className="flex items-center gap-2">

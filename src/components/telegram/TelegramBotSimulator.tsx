@@ -306,7 +306,7 @@ export const TelegramBotSimulator: React.FC = () => {
                 <Button
                   key={c.symbol}
                   onClick={() => handleSelectCoinAndScan(c.symbol)}
-                  className="bg-slate-900 border border-slate-800 hover:border-emerald-500 text-slate-100 font-bold text-xs py_5 flex flex-col items-center justify-center gap-0.5"
+                  className="glass-panel hover:border-emerald-500 text-slate-100 font-bold text-xs py_5 flex flex-col items-center justify-center gap-0.5"
                 >
                   <span className="font-mono">{c.pair}</span>
                   <span className="text-[10px] text-emerald-400 font-mono">{c.price < 10 ? c.price.toFixed(4) : c.price.toLocaleString()}</span>
@@ -340,25 +340,25 @@ export const TelegramBotSimulator: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-lg glass-panel">
                 <span className="text-[10px] text-slate-400 font-sans block">ENTRY</span>
                 <span className="font-bold text-slate-100">${scannedSignal.entryPrice}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-lg glass-panel">
                 <span className="text-[10px] text-emerald-400 font-sans block">TP1 (SCALP)</span>
                 <span className="font-bold text-emerald-400">${scannedSignal.target1}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-lg glass-panel">
                 <span className="text-[10px] text-emerald-400 font-sans block">TP2</span>
                 <span className="font-bold text-emerald-400">${scannedSignal.target2}</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div className="p-2.5 rounded-lg glass-panel">
                 <span className="text-[10px] text-rose-400 font-sans block">STOP LOSS</span>
                 <span className="font-bold text-rose-400">${scannedSignal.stopLoss}</span>
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs space-y-1">
+            <div className="p-3 rounded-xl glass-panel font-mono text-xs space-y-1">
               <span className="font-bold text-slate-300 font-sans block text-[11px] mb-1">📊 Footprint Delta & Spoofing Analysis</span>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="text-cyan-400">CVD Delta: <b>+{scannedSignal.footprintDelta} Delta</b></div>

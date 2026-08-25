@@ -201,6 +201,8 @@ export const AutoScannerService: React.FC = () => {
             target2: signal.target2,
             target3: signal.target3,
             stopLoss: signal.stopLoss,
+            support1: signal.supportLevel,
+            resistance1: signal.resistanceLevel,
             leverage: signal.leverage,
             winProbability: signal.winProbability,
             riskReward: signal.riskReward,
@@ -209,6 +211,14 @@ export const AutoScannerService: React.FC = () => {
             orderBlockZone: signal.orderBlockZone,
             backtestLabel: signal.backtestLabel,
             momentumNote: signal.momentumNote,
+            rsiValue: signal.rsiValue,
+            rsiDivergence: signal.rsiDivergence,
+            atrPercent: signal.atrPercent,
+            positionSizeNote: signal.positionSizeNote,
+            confidenceScore: signal.confidenceScore,
+            confluenceCount: signal.confluenceCount,
+            assetClass: signal.assetClass,
+            momentumStatus: signal.momentumStatus,
           });
           if (dispatched) monitorTradeForTpHits(signal);
         } else {
@@ -301,8 +311,8 @@ export const AutoScannerService: React.FC = () => {
               </Badge>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Runs all 21 strategies (incl. ICT/SMC, footprint delta, order blocks) against real Binance candles every 60s,
-              across the top {totalScannedCount - MACRO_COUNT} pairs by volume (incl. real gold &amp; silver perpetuals) plus 3 forex majors. Only dispatches when a strategy genuinely triggers.
+              Runs all 21 strategies (incl. ICT/SMC, footprint delta, order blocks) against real Binance candles every 60s.
+              It rotates through the full {totalScannedCount}-instrument universe — top USDT perpetuals by volume (incl. real gold &amp; silver perps) plus {MACRO_COUNT} forex majors — covering the whole market across successive cycles. Only dispatches when a strategy genuinely triggers.
             </p>
           </div>
         </div>
@@ -432,7 +442,7 @@ export const AutoScannerService: React.FC = () => {
 
       {selectedLogForModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 overflow-hidden shadow-2xl">
+          <div className="glass-panel rounded-2xl max-w-2xl w-full p-4 overflow-hidden shadow-2xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
               <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
                 <ImageIcon className="h-4 w-4 text-cyan-400" />
