@@ -15,6 +15,7 @@ import AdminPage from "./pages/AdminPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import BotSettings from "./pages/BotSettings"; // Import the new page
+import JournalPage from "./pages/JournalPage";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/news" element={<NewsPage />} />
+            <Route path="/journal" element={<JournalPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/bot-settings" element={<BotSettings />} /> {/* Add the new route */}

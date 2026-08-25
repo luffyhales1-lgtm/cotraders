@@ -83,6 +83,34 @@ export interface Signal {
   backtestSampleSize?: number;
   backtestLabel?: string;
   momentumNote?: string;
+  // Enriched analysis fields (populated by the signal engine for every signal)
+  rsiValue?: number;                       // current RSI(14) reading
+  rsiDivergence?: 'bullish' | 'bearish' | null; // measured divergence vs price
+  atrPercent?: number;                     // ATR as % of price (volatility)
+  supportLevel?: number;                   // nearest structural support
+  resistanceLevel?: number;                // nearest structural resistance
+  positionSizeNote?: string;               // e.g. "Risk 1.5% acct -> ~7.5% margin @ 5x"
+  riskPerTradePct?: number;                // suggested % of account to risk
+  confidenceScore?: number;                // 0-100 composite conviction score
+  confluenceCount?: number;                // how many strategies agreed
+  assetClass?: 'CRYPTO' | 'GOLD' | 'SILVER' | 'FOREX';
+}
+
+// Whole-market breadth snapshot produced by analyzeMarketOverview() and shown
+// on the dashboard "Analyze Whole Market" panel.
+export interface MarketOverview {
+  scannedCount: number;
+  signalCount: number;
+  longCount: number;
+  shortCount: number;
+  bias: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  biasStrengthPct: number;      // 0-100, how lopsided long vs short is
+  avgRsi: number | null;
+  avgConfidence: number | null;
+  topStrategies: { name: string; count: number }[];
+  strongest: Signal[];          // highest-confidence fresh signals
+  btcTrend?: string;
+  timestamp: string;
 }
 
 export interface CandleData {
@@ -132,6 +160,9 @@ export interface MarketNews {
   impact: 'HIGH' | 'MEDIUM' | 'LOW';
   isVipOnly: boolean;
   url?: string;
+  imageUrl?: string;     // article thumbnail (from the live feed)
+  publishedOn?: number;  // unix ms — used to sort + render live relative time
+  categories?: string[]; // e.g. ['BTC','Trading','Regulation']
 }
 
 export interface BacktestSummary {

@@ -5,20 +5,22 @@ import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { ProChart } from '@/components/charts/ProChart';
 import { SignalCard } from '@/components/signals/SignalCard';
 import { Hero3DCanvas } from '@/components/effects/Hero3DCanvas';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
 import { RiskCalculator } from '@/components/trading/RiskCalculator';
+import { MarketAnalyzer } from '@/components/trading/MarketAnalyzer';
 import { TelegramBotSimulator } from '@/components/telegram/TelegramBotSimulator';
 import { AutoScannerService } from '@/components/telegram/AutoScannerService';
 import { fetchTopCryptos, subscribeBinanceTickerStream } from '@/services/binanceApi';
 import { scanMarketForSignals } from '@/services/signalEngine';
 import { CoinTicker, Signal } from '@/types/trading';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Sparkles, 
-  Zap, 
-  Crown, 
-  ArrowUpRight, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  Zap,
+  Crown,
+  ArrowUpRight,
   ArrowDownRight,
   ShieldCheck,
   BarChart2,
@@ -70,15 +72,16 @@ const Index: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950 pb-16 md:pb-0">
+      <AmbientBackground />
       <TickerTape />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-6">
-        
+      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-6">
+
         <UpgradeBanner />
 
         {/* Hero Section */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950/90 to-slate-950 border border-slate-800 p-6 md:p-10 mb-8 shadow-2xl">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-950 via-indigo-950/90 to-slate-950 border border-slate-800 border-aurora animate-fade-up p-6 md:p-10 mb-8 shadow-2xl">
           <Hero3DCanvas />
 
           <div className="relative z-10 max-w-3xl">
@@ -88,7 +91,7 @@ const Index: React.FC = () => {
             </Badge>
 
             <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white leading-tight">
-              Institutional AI Signals & Scalp Scanners for <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-teal-300 to-cyan-400">Futures & Gold</span>
+              Institutional AI Signals & Scalp Scanners for <span className="text-shimmer">Futures & Gold</span>
             </h1>
 
             <p className="text-sm md:text-base text-slate-300 mt-3 leading-relaxed">
@@ -113,6 +116,9 @@ const Index: React.FC = () => {
           </div>
         </div>
 
+        {/* Analyze Whole Market — full-universe strategy scan + market read */}
+        <MarketAnalyzer onSignals={setSignals} />
+
         {/* 1-Minute Auto Scanner Service Engine */}
         <AutoScannerService />
 
@@ -122,16 +128,18 @@ const Index: React.FC = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+        <div className="scene-3d grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="p-4 rounded-2xl glass-panel card-3d">
             <span className="text-xs text-slate-400 block font-medium">SCANNER COVERAGE</span>
-            <span className="text-2xl font-black text-slate-100 font-mono mt-1 block">1,000+ FUTURES</span>
+            <span className="text-2xl font-black text-slate-100 font-mono mt-1 block">
+              {tickers.length > 0 ? `${tickers.length}` : '500+'} MARKETS
+            </span>
             <span className="text-[11px] text-emerald-400 font-bold flex items-center gap-1 mt-1">
-              <ShieldCheck className="h-3.5 w-3.5" /> Direct Futures Stream
+              <ShieldCheck className="h-3.5 w-3.5" /> Futures · Gold · Silver · Forex
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-4 rounded-2xl glass-panel card-3d">
             <span className="text-xs text-slate-400 block font-medium">GOLD (XAU/USD) LIVE</span>
             <span className="text-2xl font-black text-amber-400 font-mono mt-1 block">
               ${tickers.find(t => t.symbol === 'XAUUSDT')?.price.toFixed(2) || '2894.50'}
@@ -141,7 +149,7 @@ const Index: React.FC = () => {
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-4 rounded-2xl glass-panel card-3d">
             <span className="text-xs text-slate-400 block font-medium">FOOTPRINT CVD DELTA</span>
             <span className="text-2xl font-black text-cyan-400 font-mono mt-1 block">+1,840 CVD</span>
             <span className="text-[11px] text-cyan-400 font-bold flex items-center gap-1 mt-1">
@@ -149,7 +157,7 @@ const Index: React.FC = () => {
             </span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-4 rounded-2xl glass-panel card-3d">
             <span className="text-xs text-slate-400 block font-medium">TELEGRAM DISPATCH</span>
             <span className="text-2xl font-black text-indigo-400 font-mono mt-1 block">AUTOMATED</span>
             <span className="text-[11px] text-indigo-400 font-bold flex items-center gap-1 mt-1">
@@ -173,18 +181,18 @@ const Index: React.FC = () => {
               </h2>
               <span className="text-xs text-slate-400 font-mono">Real-time Binance Futures WebSocket Stream Active</span>
             </div>
-            <ProChart 
-              symbol={selectedCoin.symbol} 
-              pair={selectedCoin.pair} 
-              currentPrice={selectedCoin.price} 
-              change24h={selectedCoin.change24h} 
+            <ProChart
+              symbol={selectedCoin.symbol}
+              pair={selectedCoin.pair}
+              currentPrice={selectedCoin.price}
+              change24h={selectedCoin.change24h}
             />
           </div>
         )}
 
         {/* Gainers & Losers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-5 rounded-2xl glass-panel">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
               <h3 className="font-extrabold text-sm text-emerald-400 flex items-center gap-2">
                 <TrendingUp className="h-4 w-4" /> TOP 24H FUTURES GAINERS
@@ -193,8 +201,8 @@ const Index: React.FC = () => {
             </div>
             <div className="space-y-2">
               {gainers.map((coin) => (
-                <div 
-                  key={coin.symbol} 
+                <div
+                  key={coin.symbol}
                   onClick={() => setSelectedCoin(coin)}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 cursor-pointer transition-colors border border-slate-800/60"
                 >
@@ -213,7 +221,7 @@ const Index: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800">
+          <div className="p-5 rounded-2xl glass-panel">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
               <h3 className="font-extrabold text-sm text-rose-400 flex items-center gap-2">
                 <TrendingDown className="h-4 w-4" /> TOP 24H FUTURES LOSERS
@@ -222,8 +230,8 @@ const Index: React.FC = () => {
             </div>
             <div className="space-y-2">
               {losers.map((coin) => (
-                <div 
-                  key={coin.symbol} 
+                <div
+                  key={coin.symbol}
                   onClick={() => setSelectedCoin(coin)}
                   className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/80 cursor-pointer transition-colors border border-slate-800/60"
                 >
@@ -262,13 +270,13 @@ const Index: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {signals.slice(0, isVipMember ? 6 : 3).map((sig) => (
-              <SignalCard 
-                key={sig.id} 
-                signal={sig} 
+              <SignalCard
+                key={sig.id}
+                signal={sig}
                 onSelectSymbol={(sym) => {
                   const found = tickers.find(t => t.symbol === sym);
                   if (found) setSelectedCoin(found);
-                }} 
+                }}
               />
             ))}
           </div>

@@ -2,15 +2,16 @@ import React from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
 import { useAuth } from '@/context/AuthContext';
-import { 
-  Crown, 
-  CheckCircle2, 
-  XCircle, 
-  Sparkles, 
-  Instagram, 
-  Zap, 
-  ShieldCheck, 
+import {
+  Crown,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  Instagram,
+  Zap,
+  ShieldCheck,
   HelpCircle,
   MessageCircle,
   CalendarClock,
@@ -32,16 +33,17 @@ const PricingPage: React.FC = () => {
 
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+        <AmbientBackground />
         <TickerTape />
         <Navbar />
-        <main className="max-w-3xl mx-auto px-4 lg:px-8 py-16">
-          <Card className="bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-900 border-amber-500/50 text-slate-100 overflow-hidden shadow-2xl">
+        <main className="relative z-10 max-w-3xl mx-auto px-4 lg:px-8 py-16">
+          <Card className="border-aurora bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-900 border-amber-500/50 text-slate-100 overflow-hidden shadow-2xl">
             <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black text-center py-1 uppercase tracking-widest">
               Active Subscription
             </div>
             <CardHeader className="text-center">
               <Badge className="w-fit mx-auto bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] mb-2">
-                <Crown className="h-3 w-3 mr-1 text-amber-400" /> {user.tier === 'yearly' ? 'YEARLY PRO VIP' : 'MONTHLY VIP'}
+                <Crown className="h-3 w-3 mr-1 text-amber-400" /> {user.tier === 'vip_yearly' ? 'YEARLY PRO VIP' : 'MONTHLY VIP'}
               </Badge>
               <CardTitle className="text-3xl font-black">You're all set, {user.name}</CardTitle>
             </CardHeader>
@@ -76,11 +78,12 @@ const PricingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <AmbientBackground />
       <TickerTape />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-10">
-        
+      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-10">
+
         <div className="text-center max-w-3xl mx-auto mb-12">
           <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold mb-3 px-3 py-1">
             <Crown className="h-4 w-4 mr-1 text-amber-400" /> INSTITUTIONAL VIP ACCESS
@@ -94,10 +97,10 @@ const PricingPage: React.FC = () => {
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
-          
+        <div className="scene-3d grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16">
+
           {/* Free Plan */}
-          <Card className="bg-slate-900 border-slate-800 text-slate-100 relative overflow-hidden flex flex-col justify-between">
+          <Card className="glass-panel card-3d text-slate-100 relative overflow-hidden flex flex-col justify-between">
             <CardHeader>
               <Badge variant="outline" className="w-fit text-slate-400 border-slate-800 text-[10px] mb-2">FREE TRIAL</Badge>
               <CardTitle className="text-2xl font-black">Free Standard</CardTitle>
@@ -125,7 +128,7 @@ const PricingPage: React.FC = () => {
           </Card>
 
           {/* VIP Monthly - Featured */}
-          <Card className="bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-900 border-amber-500/50 text-slate-100 relative overflow-hidden shadow-2xl scale-105 flex flex-col justify-between">
+          <Card className="card-3d bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-900 border-amber-500/50 text-slate-100 relative overflow-hidden shadow-2xl md:scale-105 flex flex-col justify-between">
             <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black text-center py-1 uppercase tracking-widest">
               MOST POPULAR TRADER CHOICE
             </div>
@@ -158,7 +161,7 @@ const PricingPage: React.FC = () => {
           </Card>
 
           {/* VIP Yearly */}
-          <Card className="bg-slate-900 border-purple-500/40 text-slate-100 relative overflow-hidden flex flex-col justify-between">
+          <Card className="glass-panel card-3d border-purple-500/40 text-slate-100 relative overflow-hidden flex flex-col justify-between">
             <CardHeader>
               <Badge className="w-fit bg-purple-500/20 text-purple-300 border-purple-500/40 text-[10px] mb-2">MAX VALUE</Badge>
               <CardTitle className="text-2xl font-black">Yearly Pro VIP</CardTitle>
@@ -187,7 +190,7 @@ const PricingPage: React.FC = () => {
         </div>
 
         {/* FAQ Section */}
-        <div className="max-w-4xl mx-auto p-6 rounded-2xl bg-slate-900 border border-slate-800">
+        <div className="max-w-4xl mx-auto p-6 rounded-2xl glass-panel">
           <h2 className="text-xl font-extrabold text-slate-100 mb-6 flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-indigo-400" />
             Frequently Asked Questions

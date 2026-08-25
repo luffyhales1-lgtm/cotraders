@@ -5,6 +5,7 @@ import { ProChart } from '@/components/charts/ProChart';
 import { LiquidityHeatmap } from '@/components/trading/LiquidityHeatmap';
 import { TechnicalGauge } from '@/components/trading/TechnicalGauge';
 import { VIPGateModal } from '@/components/subscription/VIPGateModal';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
 import { fetchTopCryptos } from '@/services/binanceApi';
 import { CoinTicker } from '@/types/trading';
 import { Search, LineChart, Sparkles } from 'lucide-react';
@@ -27,18 +28,19 @@ const ProChartsPage: React.FC = () => {
     load();
   }, []);
 
-  const searchFiltered = tickers.filter(t => 
-    t.pair.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const searchFiltered = tickers.filter(t =>
+    t.pair.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.symbol.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <AmbientBackground />
       <TickerTape />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
-        
+      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
+
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2">
@@ -64,8 +66,8 @@ const ProChartsPage: React.FC = () => {
         </div>
 
         {!isVipMember ? (
-          <VIPGateModal 
-            title="Pro Dark Terminal Locked" 
+          <VIPGateModal
+            title="Pro Dark Terminal Locked"
             description="Upgrade to VIP Subscription to access full candlestick charts, live orderbooks, SMC liquidity heatmaps, and technical summary gauges."
           />
         ) : (
@@ -94,15 +96,15 @@ const ProChartsPage: React.FC = () => {
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <TechnicalGauge 
-                    pair={selectedCoin.pair} 
-                    price={selectedCoin.price} 
-                    change24h={selectedCoin.change24h} 
+                  <TechnicalGauge
+                    pair={selectedCoin.pair}
+                    price={selectedCoin.price}
+                    change24h={selectedCoin.change24h}
                   />
-                  <LiquidityHeatmap 
-                    symbol={selectedCoin.symbol} 
-                    pair={selectedCoin.pair} 
-                    currentPrice={selectedCoin.price} 
+                  <LiquidityHeatmap
+                    symbol={selectedCoin.symbol}
+                    pair={selectedCoin.pair}
+                    currentPrice={selectedCoin.price}
                   />
                 </div>
               </div>

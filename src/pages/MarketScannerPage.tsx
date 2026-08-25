@@ -3,18 +3,22 @@ import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { VIPGateModal } from '@/components/subscription/VIPGateModal';
+import { DeepCoinAnalyzer } from '@/components/analytics/DeepCoinAnalyzer';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
 import { fetchTopCryptos, subscribeBinanceTickerStream } from '@/services/binanceApi';
 import { CoinTicker } from '@/types/trading';
-import { Scan, Search, ArrowUpRight, ArrowDownRight, Send } from 'lucide-react';
+import { Scan, Search, ArrowUpRight, ArrowDownRight, Microscope } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 
 const MarketScannerPage: React.FC = () => {
-  const { isVipMember, dispatchTelegramSignal } = useAuth();
+  const { isVipMember } = useAuth();
   const [tickers, setTickers] = useState<CoinTicker[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [analyzeTarget, setAnalyzeTarget] = useState<{ symbol: string; pair: string } | null>(null);
+  const [analyzerOpen, setAnalyzerOpen] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
@@ -40,38 +44,23 @@ const MarketScannerPage: React.FC = () => {
     };
   }, []);
 
-  const filtered = tickers.filter(t => 
-    t.pair.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filtered = tickers.filter(t =>
+    t.pair.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.baseAsset.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleScanAndSendToTelegram = (coin: CoinTicker) => {
-    const isLong = coin.change24h >= 0;
-    const price = coin.price;
-
-    dispatchTelegramSignal({
-      pair: coin.pair,
-      type: isLong ? 'LONG' : 'SHORT',
-      strategy: 'SMC Order Block & Liquidity Grab',
-      timeframe: '15m',
-      entryPrice: price,
-      target1: +(price * (isLong ? 1.025 : 0.975)).toFixed(2),
-      target2: +(price * (isLong ? 1.05 : 0.95)).toFixed(2),
-      target3: +(price * (isLong ? 1.085 : 0.915)).toFixed(2),
-      stopLoss: +(price * (isLong ? 0.985 : 1.015)).toFixed(2),
-      leverage: '20x',
-      winProbability: 91,
-      riskReward: '1:3.2',
-      rationale: `Instant live scan trigger on ${coin.pair} from 1,000+ Scanner Terminal. High volume order block confirmed.`,
-    });
+  const handleDeepAnalyze = (coin: CoinTicker) => {
+    setAnalyzeTarget({ symbol: coin.symbol, pair: coin.pair });
+    setAnalyzerOpen(true);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <AmbientBackground />
       <TickerTape />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
         <UpgradeBanner />
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
@@ -97,12 +86,12 @@ const MarketScannerPage: React.FC = () => {
         </div>
 
         {!isVipMember ? (
-          <VIPGateModal 
-            title="1,000+ Pair Depth Scanner Restricted" 
+          <VIPGateModal
+            title="1,000+ Pair Depth Scanner Restricted"
             description="Subscribe to VIP to scan over 1,000+ Binance spot pairs in real time with high-volume surge filters and depth indicators."
           />
         ) : (
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="glass-panel rounded-3xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left font-mono text-xs">
                 <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-sans">
@@ -113,7 +102,7 @@ const MarketScannerPage: React.FC = () => {
                     <th className="p-4 font-bold">24H HIGH</th>
                     <th className="p-4 font-bold">24H LOW</th>
                     <th className="p-4 font-bold">24H VOLUME</th>
-                    <th className="p-4 font-bold text-right">TELEGRAM ACTION</th>
+                    <th className="p-4 font-bold text-right">DEEP ANALYSIS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -140,11 +129,11 @@ const MarketScannerPage: React.FC = () => {
                         <td className="p-4 text-right">
                           <Button
                             size="sm"
-                            onClick={() => handleScanAndSendToTelegram(coin)}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] gap-1 h-7"
+                            onClick={() => handleDeepAnalyze(coin)}
+                            className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-[11px] gap-1 h-7"
                           >
-                            <Send className="h-3 w-3" />
-                            Scan to Telegram
+                            <Microscope className="h-3 w-3" />
+                            Deep Analyze
                           </Button>
                         </td>
                       </tr>
@@ -157,6 +146,13 @@ const MarketScannerPage: React.FC = () => {
         )}
 
       </main>
+
+      <DeepCoinAnalyzer
+        symbol={analyzeTarget?.symbol ?? null}
+        pair={analyzeTarget?.pair ?? null}
+        open={analyzerOpen}
+        onOpenChange={setAnalyzerOpen}
+      />
     </div>
   );
 };

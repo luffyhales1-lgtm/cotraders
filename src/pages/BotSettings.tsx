@@ -3,13 +3,15 @@ import { Navbar } from '@/components/layout/Navbar';
 import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { VIPGateModal } from '@/components/subscription/VIPGateModal';
-import { 
-  UserPlus, 
-  Users, 
-  ShieldCheck, 
-  Send, 
-  Instagram, 
-  LogIn, 
+import { MobileNav } from '@/components/layout/MobileNav';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
+import {
+  UserPlus,
+  Users,
+  ShieldCheck,
+  Send,
+  Instagram,
+  LogIn,
   ArrowRight,
   Crown,
   LogOut,
@@ -100,38 +102,48 @@ const BotSettings: React.FC = () => {
 
   if (!isVipMember) {
     return (
-      <>
-        {!user ? (
-          <div className="p-4 bg-slate-900 border-b border-slate-800 text-center">
-            <Link to="/login" className="text-indigo-400 hover:text-indigo-300">
-              Login to access bot settings
-            </Link>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
-            <span className="text-slate-400">{user.email}</span>
-            <Button onClick={logout} variant="ghost" size="icon" title="Logout">
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        )}
-        <VIPGateModal 
-          title="Bot Settings Locked" 
-          description="Upgrade to VIP to manage your Telegram bot configurations, enable/disable auto-scan, and customize your trading signals."
-        />
-      </>
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+        <AmbientBackground />
+        <TickerTape />
+        <Navbar />
+        <main className="relative z-10 max-w-3xl mx-auto px-4 lg:px-8 py-8">
+          {!user ? (
+            <div className="p-4 mb-6 rounded-2xl glass-panel text-center">
+              <Link to="/login" className="text-indigo-400 hover:text-indigo-300">
+                Login to access bot settings
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 mb-6 rounded-2xl glass-panel">
+              <span className="text-slate-400">{user.email}</span>
+              <Button onClick={logout} variant="ghost" size="icon" title="Logout">
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          )}
+          <VIPGateModal
+            title="Bot Settings Locked"
+            description="Upgrade to VIP to manage your Telegram bot configurations, enable/disable auto-scan, and customize your trading signals."
+          />
+        </main>
+        <MobileNav />
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <AmbientBackground />
+      <TickerTape />
+      <Navbar />
+      <main className="relative z-10 max-w-3xl mx-auto px-4 lg:px-8 py-8">
+      <div className="flex items-center justify-between p-4 mb-6 rounded-2xl glass-panel">
         <span className="text-slate-400">{user.email}</span>
         <Button onClick={logout} variant="ghost" size="icon" title="Logout">
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800">
+      <div className="p-6 rounded-2xl glass-panel">
         <CardHeader>
           <CardTitle className="text-lg font-bold flex items-center gap-3 text-indigo-400">
             <Settings className="h-6 w-6" />
@@ -182,9 +194,9 @@ const BotSettings: React.FC = () => {
               </span>
             </div>
 
-            <Button 
-              type="submit" 
-              disabled={loading} 
+            <Button
+              type="submit"
+              disabled={loading}
               className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-5 px-8"
             >
               {loading ? 'Saving...' : 'Save Bot Configuration'}
@@ -194,7 +206,7 @@ const BotSettings: React.FC = () => {
       </div>
 
       {/* Current Status */}
-      <div className="mt-6 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+      <div className="mt-6 p-4 rounded-2xl glass-panel">
         <h3 className="font-bold text-lg text-slate-100 mb-4">Current Status</h3>
         <div className="space-y-3">
           <div className="flex items-center justify-between text-slate-400">
@@ -215,7 +227,7 @@ const BotSettings: React.FC = () => {
       </div>
 
       {/* Help Section */}
-      <div className="mt-6 p-4 rounded-2xl bg-slate-900 border border-slate-800">
+      <div className="mt-6 p-4 rounded-2xl glass-panel">
         <h3 className="font-bold text-lg text-slate-100 mb-4">How to Get Your Telegram Bot Token and Chat ID</h3>
         <ol className="list-decimal list-inside space-y-2 text-slate-400">
           <li>Talk to @BotFather on Telegram to create a new bot and get your token</li>
@@ -227,7 +239,9 @@ const BotSettings: React.FC = () => {
           <strong>Note:</strong> Your bot must be started (send /start to it) before it can receive messages.
         </p>
       </div>
-    </>
+      </main>
+      <MobileNav />
+    </div>
   );
 };
 

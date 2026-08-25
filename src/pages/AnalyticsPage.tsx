@@ -7,6 +7,7 @@ import { EconomicCalendar } from '@/components/trading/EconomicCalendar';
 import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
 import { WhaleTracker } from '@/components/analytics/WhaleTracker';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { AmbientBackground } from '@/components/effects/AmbientBackground';
 import { Award, Zap, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,13 +19,14 @@ const AnalyticsPage: React.FC = () => {
   if (!isVipMember) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+        <AmbientBackground />
         <TickerTape />
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+        <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
           <UpgradeBanner />
           <div className="flex flex-col items-center justify-center text-center py-20">
             <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold mb-2">
-              <Lock className="h-3.5 w-3.5 mr-1" /> VIP ACCESS REQUIRED
+              <ShieldCheck className="h-3.5 w-3.5 mr-1" /> VIP ACCESS REQUIRED
             </Badge>
             <h2 className="text-2xl font-black text-slate-100">Grok AI Intelligence & Quantitative Backtests</h2>
             <p className="text-sm text-slate-400 mt-1 max-w-md">
@@ -42,10 +44,11 @@ const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <AmbientBackground />
       <TickerTape />
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
         <UpgradeBanner />
 
         <div className="mb-8">
@@ -64,7 +67,7 @@ const AnalyticsPage: React.FC = () => {
           <EconomicCalendar />
         </div>
 
-        {/* Whale Tracker — CoinGlass powered (VIP-only) */}
+        {/* Whale Tracker — free Hyperliquid live feed (VIP-only) */}
         <div className="mt-8">
           <WhaleTracker />
         </div>
