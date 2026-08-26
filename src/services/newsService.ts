@@ -1,27 +1,35 @@
 import { MarketNews } from '@/types/trading';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * LIVE crypto/macro news service.
  *
- * Primary source: CryptoCompare (CCData) public news API —
- *   https://min-api.cryptocompare.com/data/v2/news/?lang=EN
- * It is free, needs no API key for basic access, and is CORS-enabled, so it can
- * be called directly from the browser. Each call returns the newest articles
- * aggregated from dozens of real outlets (CoinDesk, Cointelegraph, Decrypt,
- * The Block, Reuters crypto desk, etc.), so the feed is genuinely live and
- * changes throughout the day — no more hardcoded/stale items.
+ * Sources, in order of preference:
+ *   1. Our own `market-news` Supabase edge function, which aggregates MANY real
+ *      outlets server-side (CryptoCompare + CoinDesk, Cointelegraph, Decrypt,
+ *      Bitcoin Magazine, CryptoSlate, CoinJournal RSS) with no CORS/key limits.
+ *   2. Direct CryptoCompare (CCData) browser call — works with no backend at all,
+ *      so the feed keeps working even before the edge function is deployed.
  *
  * We normalise every article into the app's MarketNews shape and derive a
- * lightweight sentiment + impact read from the headline/body keywords so the
- * UI can colour-code them. Nothing here is faked: if the network call fails we
- * surface the error to the caller rather than inventing placeholder news.
+ * lightweight sentiment + impact read from the headline/body keywords so the UI
+ * can colour-code them. Nothing here is faked: if every source fails we throw so
+ * the caller shows a real error state rather than inventing placeholder news.
  */
 
 const CRYPTOCOMPARE_NEWS_URL =
   'https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest';
 
-// Secondary/fallback feed (also free, no key, CORS-enabled): CoinStats news.
-const COINSTATS_NEWS_URL = 'https://api.coinstats.app/public/v1/news?skip=0&limit=30';
+interface RawArticle {
+  id: string;
+  title: string;
+  source: string;
+  url: string;
+  imageUrl?: string;
+  body?: string;
+  publishedOn: number; // unix ms
+  categories?: string[];
+}
 
 interface CryptoCompareArticle {
   id: string;
@@ -50,7 +58,7 @@ const BEARISH_WORDS = [
   'exploit', 'breach', 'ban', 'banned', 'lawsuit', 'sued', 'sell-off', 'selloff',
   'liquidat', 'outflow', 'decline', 'warning', 'fear', 'fraud', 'scam', 'collapse',
   'bankrupt', 'sinks', 'slump', 'tumble', 'crackdown', 'rug', 'downgrade',
-  'sell pressure', 'correction', 'fud', 'delist', 'halt', 'exploit',
+  'sell pressure', 'correction', 'fud', 'delist', 'halt',
 ];
 
 const HIGH_IMPACT_WORDS = [
@@ -90,52 +98,13 @@ export function relativeTime(publishedMs: number): string {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
-function normaliseCryptoCompare(articles: CryptoCompareArticle[]): MarketNews[] {
+function normaliseRaw(articles: RawArticle[]): MarketNews[] {
   return articles.map((a, idx) => {
-    const publishedMs = (a.published_on ?? 0) * 1000;
+    const publishedMs = a.publishedOn || Date.now();
     const summary = (a.body ?? '').replace(/\s+/g, ' ').trim().slice(0, 260);
-    const haystack = `${a.title} ${summary} ${a.categories ?? ''}`;
-    const categories = (a.categories ?? '')
-      .split('|')
-      .map(c => c.trim())
-      .filter(Boolean)
-      .slice(0, 4);
+    const haystack = `${a.title} ${summary} ${(a.categories ?? []).join(' ')}`;
     return {
-      id: a.id ?? a.guid ?? `cc-${idx}-${publishedMs}`,
-      title: a.title,
-      source: a.source_info?.name ?? a.source ?? 'Crypto Newswire',
-      time: relativeTime(publishedMs),
-      summary: summary || 'Tap through for the full market report.',
-      sentiment: scoreSentiment(haystack),
-      impact: scoreImpact(haystack),
-      // Gate deeper/high-impact institutional reads behind VIP; keep the feed
-      // itself readable so free users still see live headlines.
-      isVipOnly: false,
-      url: a.url,
-      imageUrl: a.imageurl,
-      publishedOn: publishedMs,
-      categories,
-    } as MarketNews;
-  });
-}
-
-interface CoinStatsArticle {
-  id?: string;
-  title: string;
-  link?: string;
-  source?: string;
-  feedDate?: number; // unix ms
-  imgURL?: string;
-  description?: string;
-}
-
-function normaliseCoinStats(articles: CoinStatsArticle[]): MarketNews[] {
-  return articles.map((a, idx) => {
-    const publishedMs = a.feedDate ?? Date.now();
-    const summary = (a.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 260);
-    const haystack = `${a.title} ${summary}`;
-    return {
-      id: a.id ?? `cs-${idx}-${publishedMs}`,
+      id: a.id ?? `n-${idx}-${publishedMs}`,
       title: a.title,
       source: a.source ?? 'Crypto Newswire',
       time: relativeTime(publishedMs),
@@ -143,52 +112,72 @@ function normaliseCoinStats(articles: CoinStatsArticle[]): MarketNews[] {
       sentiment: scoreSentiment(haystack),
       impact: scoreImpact(haystack),
       isVipOnly: false,
-      url: a.link,
-      imageUrl: a.imgURL,
+      url: a.url,
+      imageUrl: a.imageUrl,
       publishedOn: publishedMs,
-      categories: [],
+      categories: a.categories ?? [],
     } as MarketNews;
   });
 }
 
-/**
- * Fetches the latest live market news, newest first. Tries CryptoCompare first
- * and transparently falls back to CoinStats if that feed is unreachable, so the
- * page stays live even if one provider has a hiccup. Throws only if BOTH
- * providers fail — the caller shows a real error state (never fake news).
- */
-export async function fetchLiveNews(limit = 24): Promise<MarketNews[]> {
-  // --- Primary: CryptoCompare ---
+function normaliseCryptoCompare(articles: CryptoCompareArticle[]): RawArticle[] {
+  return articles.map((a, idx) => ({
+    id: a.id ?? a.guid ?? `cc-${idx}`,
+    title: a.title,
+    source: a.source_info?.name ?? a.source ?? 'Crypto Newswire',
+    url: a.url,
+    imageUrl: a.imageurl,
+    body: a.body,
+    publishedOn: (a.published_on ?? 0) * 1000,
+    categories: (a.categories ?? '').split('|').map(c => c.trim()).filter(Boolean).slice(0, 4),
+  }));
+}
+
+/** Source #1 — our multi-outlet aggregator edge function. */
+async function fetchFromEdge(): Promise<RawArticle[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('market-news', { body: {} });
+    if (error) return [];
+    const articles: RawArticle[] = data?.articles ?? [];
+    return Array.isArray(articles) ? articles : [];
+  } catch (e) {
+    console.warn('[newsService] edge aggregator unavailable, falling back:', e);
+    return [];
+  }
+}
+
+/** Source #2 — direct CryptoCompare (no backend needed). */
+async function fetchFromCryptoCompare(): Promise<RawArticle[]> {
   try {
     const res = await fetch(CRYPTOCOMPARE_NEWS_URL, { headers: { accept: 'application/json' } });
-    if (res.ok) {
-      const json = await res.json();
-      const data: CryptoCompareArticle[] = json?.Data ?? [];
-      if (Array.isArray(data) && data.length > 0) {
-        return normaliseCryptoCompare(data)
-          .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0))
-          .slice(0, limit);
-      }
-    }
+    if (!res.ok) return [];
+    const json = await res.json();
+    const data: CryptoCompareArticle[] = json?.Data ?? [];
+    return Array.isArray(data) ? normaliseCryptoCompare(data) : [];
   } catch (e) {
-    console.warn('[newsService] CryptoCompare feed failed, trying fallback:', e);
+    console.warn('[newsService] CryptoCompare direct call failed:', e);
+    return [];
+  }
+}
+
+/**
+ * Fetches the latest live market news, newest first. Tries the multi-source
+ * aggregator first and transparently falls back to a direct CryptoCompare call,
+ * so the page stays live even if the edge function isn't deployed yet. Throws
+ * only if BOTH paths fail — the caller shows a real error state (never fake news).
+ */
+export async function fetchLiveNews(limit = 30): Promise<MarketNews[]> {
+  let raw = await fetchFromEdge();
+
+  if (raw.length === 0) {
+    raw = await fetchFromCryptoCompare();
   }
 
-  // --- Fallback: CoinStats ---
-  try {
-    const res = await fetch(COINSTATS_NEWS_URL, { headers: { accept: 'application/json' } });
-    if (res.ok) {
-      const json = await res.json();
-      const data: CoinStatsArticle[] = json?.news ?? [];
-      if (Array.isArray(data) && data.length > 0) {
-        return normaliseCoinStats(data)
-          .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0))
-          .slice(0, limit);
-      }
-    }
-  } catch (e) {
-    console.warn('[newsService] CoinStats fallback failed:', e);
+  if (raw.length === 0) {
+    throw new Error('Live news feed is temporarily unreachable. Please refresh in a moment.');
   }
 
-  throw new Error('Live news feed is temporarily unreachable. Please refresh in a moment.');
+  return normaliseRaw(raw)
+    .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0))
+    .slice(0, limit);
 }

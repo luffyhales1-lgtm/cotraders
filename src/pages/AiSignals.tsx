@@ -133,7 +133,7 @@ const AiSignals: React.FC = () => {
 
         <UpgradeBanner />
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 animate-fade-up">
           <div>
             <div className="flex items-center gap-2">
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/40 font-bold">
@@ -143,7 +143,7 @@ const AiSignals: React.FC = () => {
                 1000+ Pairs & Gold
               </Badge>
             </div>
-            <h1 className="text-3xl font-black text-slate-100 mt-2">Live AI Trading Signals & Telegram Redirect</h1>
+            <h1 className="text-3xl font-black text-slate-100 mt-2 text-shimmer">Live AI Trading Signals & Telegram Redirect</h1>
             <p className="text-sm text-slate-400 mt-1">
               Multi-indicator algorithms evaluating SMC Order Blocks, EMA Crossovers & RSI Divergence with 1-min auto Telegram dispatch.
             </p>
@@ -237,9 +237,9 @@ const AiSignals: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 scene-3d">
                 {filtered.map(signal => (
-                  <div key={signal.id} className="relative group">
+                  <div key={signal.id} className="relative group card-3d rounded-2xl">
                     <SignalCard signal={signal} />
                     <div className="mt-2 text-right">
                       <Button

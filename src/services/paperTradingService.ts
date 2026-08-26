@@ -97,6 +97,52 @@ export function addPaperTradeFromSignal(signal: Signal): PaperTrade {
   return trade;
 }
 
+/** Input for opening a paper trade from a source that isn't a full Signal
+ *  (e.g. the AI Chart Screenshot Analyzer). Only the fields the journal needs. */
+export interface ManualPaperTradeInput {
+  symbol: string;
+  pair: string;
+  type: 'LONG' | 'SHORT';
+  strategy: string;
+  timeframe: string;
+  entryPrice: number;
+  stopLoss: number;
+  target1: number;
+  target2: number;
+  target3: number;
+  leverage?: string;
+  confidenceScore?: number;
+}
+
+/**
+ * Opens a paper trade from a plain level set (used by the AI Chart Analyzer).
+ * Behaves exactly like addPaperTradeFromSignal — the trade is then resolved
+ * against REAL Binance candles by updateOpenTrades(); nothing is simulated.
+ */
+export function addPaperTradeManual(input: ManualPaperTradeInput): PaperTrade {
+  const trades = getPaperTrades();
+  const trade: PaperTrade = {
+    id: `PT-${input.symbol}-${Date.now()}`,
+    symbol: input.symbol,
+    pair: input.pair,
+    type: input.type,
+    strategy: input.strategy,
+    timeframe: input.timeframe,
+    entryPrice: input.entryPrice,
+    stopLoss: input.stopLoss,
+    target1: input.target1,
+    target2: input.target2,
+    target3: input.target3,
+    leverage: input.leverage ?? '—',
+    confidenceScore: input.confidenceScore,
+    openedAt: Date.now(),
+    status: 'OPEN',
+    mfeTag: null,
+  };
+  savePaperTrades([trade, ...trades]);
+  return trade;
+}
+
 export function deletePaperTrade(id: string) {
   savePaperTrades(getPaperTrades().filter(t => t.id !== id));
 }

@@ -8,7 +8,7 @@ import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
 import { WhaleTracker } from '@/components/analytics/WhaleTracker';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { AmbientBackground } from '@/components/effects/AmbientBackground';
-import { Award, Zap, ShieldCheck } from 'lucide-react';
+import { Zap, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
@@ -51,11 +51,11 @@ const AnalyticsPage: React.FC = () => {
       <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
         <UpgradeBanner />
 
-        <div className="mb-8">
+        <div className="mb-8 animate-fade-up">
           <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 font-bold mb-2">
             <Zap className="h-3.5 w-3.5 mr-1" /> BINANCE FUTURES & GROK AI ANALYTICS
           </Badge>
-          <h1 className="text-3xl font-black text-slate-100">Grok AI Intelligence & Quantitative Backtests</h1>
+          <h1 className="text-3xl font-black text-slate-100 text-shimmer">Grok AI Intelligence & Quantitative Backtests</h1>
           <p className="text-sm text-slate-400 mt-1">Backtested win rates, Grok AI market statements, and non-repetitive hourly Telegram reports.</p>
         </div>
 

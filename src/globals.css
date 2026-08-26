@@ -223,3 +223,213 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, hsl(var(--glow-primary) / 0.6), transparent);
 }
+
+/* ============================================================
+   NEW 3D INTERFACE SYSTEM  (v2)
+   These classes are referenced across the app (dashboard, pricing,
+   login, journal, ...). Previously undefined -> they rendered as
+   nothing, so the site only looked "recoloured". Defining them here
+   upgrades the WHOLE site to a real depth/parallax 3D interface while
+   keeping the exact same violet colour tokens and the logo untouched.
+   ============================================================ */
+
+/* ---- Living aurora backdrop (fills AmbientBackground) ---------------- */
+.aurora-bg {
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(38% 44% at 18% 22%, hsl(268 92% 60% / 0.42), transparent 70%),
+    radial-gradient(34% 40% at 82% 18%, hsl(190 90% 55% / 0.30), transparent 70%),
+    radial-gradient(46% 50% at 60% 88%, hsl(285 85% 60% / 0.38), transparent 72%),
+    radial-gradient(40% 44% at 30% 80%, hsl(220 90% 58% / 0.24), transparent 72%);
+  filter: blur(40px) saturate(125%);
+  opacity: 0.9;
+  animation: aurora-drift 26s ease-in-out infinite alternate;
+  will-change: transform, filter;
+}
+.aurora-bg::after {
+  /* slow rotating conic sheen for the "moving light" feel */
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    hsl(268 92% 62% / 0.16) 60deg,
+    transparent 140deg,
+    hsl(285 85% 65% / 0.14) 220deg,
+    transparent 320deg
+  );
+  filter: blur(30px);
+  animation: aurora-spin 40s linear infinite;
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate3d(-3%, -2%, 0) scale(1);    }
+  50%  { transform: translate3d(4%, 3%, 0) scale(1.08);   }
+  100% { transform: translate3d(-2%, 4%, 0) scale(1.04);  }
+}
+@keyframes aurora-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- 3D perspective scene + tilting cards --------------------------- */
+.scene-3d {
+  perspective: 1600px;
+  perspective-origin: 50% 30%;
+}
+
+.card-3d {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: translateZ(0);
+  transition:
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.5s ease,
+    border-color 0.5s ease;
+  box-shadow:
+    0 1px 0 0 hsl(270 70% 80% / 0.10) inset,
+    0 18px 40px -22px hsl(260 60% 2% / 0.85),
+    0 2px 8px -4px hsl(260 60% 2% / 0.6);
+}
+.card-3d::after {
+  /* diagonal glass sheen that sweeps on hover */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, transparent 30%, hsl(0 0% 100% / 0.06) 45%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+.card-3d:hover {
+  transform: rotateX(6deg) rotateY(-6deg) translateY(-8px) translateZ(30px);
+  border-color: hsl(var(--glow-primary) / 0.55);
+  box-shadow:
+    0 1px 0 0 hsl(270 70% 85% / 0.16) inset,
+    0 40px 70px -30px hsl(260 60% 2% / 0.9),
+    0 0 44px -8px hsl(var(--glow-primary) / 0.5);
+}
+.card-3d:hover::after { opacity: 1; }
+
+/* A stronger interactive pop for pricing / feature tiles */
+.card-3d-pop:hover {
+  transform: rotateX(4deg) rotateY(4deg) translateY(-10px) scale(1.02) translateZ(40px);
+}
+
+/* ---- Animated aurora border (hero / feature frames) ----------------- */
+.border-aurora {
+  position: relative;
+  isolation: isolate;
+}
+.border-aurora::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    130deg,
+    hsl(268 92% 62%),
+    hsl(190 90% 55%),
+    hsl(285 85% 65%),
+    hsl(268 92% 62%)
+  );
+  background-size: 300% 300%;
+  animation: aurora-border 8s ease infinite;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes aurora-border {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ---- Shimmering gradient headline text ------------------------------ */
+.text-shimmer {
+  background: linear-gradient(
+    100deg,
+    hsl(268 92% 72%) 0%,
+    hsl(0 0% 100%) 25%,
+    hsl(285 90% 72%) 45%,
+    hsl(190 90% 65%) 65%,
+    hsl(268 92% 72%) 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shimmer 6s linear infinite;
+}
+@keyframes text-shimmer {
+  to { background-position: 220% center; }
+}
+
+/* ---- Entrance + floating motion ------------------------------------- */
+.animate-fade-up {
+  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(22px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.float-3d {
+  animation: float-3d 7s ease-in-out infinite;
+}
+@keyframes float-3d {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-10px) rotate(0.4deg); }
+}
+
+/* Small utility: a soft inner-lit pill/tag used across the new UI */
+.chip-3d {
+  background: linear-gradient(180deg, hsl(var(--surface-2) / 0.9), hsl(var(--surface-1) / 0.8));
+  border: 1px solid hsl(var(--border) / 0.8);
+  box-shadow: 0 1px 0 0 hsl(270 70% 80% / 0.10) inset, 0 8px 20px -14px hsl(260 60% 2% / 0.8);
+}
+
+/* ---- Premium scrollbar (whole site) --------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--glow-primary) / 0.5) transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, hsl(268 92% 55% / 0.7), hsl(285 85% 55% / 0.7));
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, hsl(268 92% 62%), hsl(285 85% 62%));
+  background-clip: padding-box;
+}
+
+html { scroll-behavior: smooth; }
+
+/* Respect reduced-motion: kill the heavy ambient/scene animations */
+@media (prefers-reduced-motion: reduce) {
+  .aurora-bg,
+  .aurora-bg::after,
+  .text-shimmer,
+  .border-aurora::before,
+  .float-3d,
+  .animate-glow-pulse,
+  .ambient-orb {
+    animation: none !important;
+  }
+  .card-3d,
+  .glass-panel-interactive {
+    transition: none !important;
+  }
+}

@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/context/AuthContext';
 import { generateTradeSetupChartImage } from '@/utils/chartScreenshot';
 import { addPaperTradeFromSignal } from '@/services/paperTradingService';
+import { Signal } from '@/types/trading';
 import { toast } from 'sonner';
 
 interface SignalCardProps {

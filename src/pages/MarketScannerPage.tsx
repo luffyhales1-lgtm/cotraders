@@ -60,12 +60,12 @@ const MarketScannerPage: React.FC = () => {
       <TickerTape />
       <Navbar />
 
-      <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
+      <main className="scene-3d relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
         <UpgradeBanner />
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+        <div className="animate-fade-up flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2">
+            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2 text-shimmer">
               <Scan className="h-7 w-7 text-amber-400" />
               1,000+ Live Binance & Gold Scanner
             </h1>
@@ -91,7 +91,7 @@ const MarketScannerPage: React.FC = () => {
             description="Subscribe to VIP to scan over 1,000+ Binance spot pairs in real time with high-volume surge filters and depth indicators."
           />
         ) : (
-          <div className="glass-panel rounded-3xl overflow-hidden shadow-2xl">
+          <div className="glass-panel card-3d rounded-3xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
               <table className="w-full text-left font-mono text-xs">
                 <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 font-sans">

@@ -26,23 +26,39 @@ const INSTAGRAM_URL = 'https://www.instagram.com/abdul_kaif12';
 const VIP_MONTHLY_PRICE = 29.90;
 const VIP_YEARLY_PRICE = 99.90;
 
+// Owner / super-admin accounts. These emails are ALWAYS treated as admins on
+// the client, even if the database `is_admin` flag was never set or a `profiles`
+// row is missing/blocked by RLS. This guarantees the owner never loses the
+// admin portal. (Real end users still get admin only via the DB flag.)
+const ADMIN_EMAILS = new Set<string>([
+  'luffyhales1@gmail.com',
+]);
+
+function isAdminEmail(email?: string | null): boolean {
+  return !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// VIP status is computed live from the expiry date, never trusted as a stored flag.
+// VIP status is computed live from the expiry date, never trusted as a stored
+// flag. Admins always have full (VIP) access to every feature.
 function computeIsVip(profile: UserProfile | null): boolean {
   if (!profile) return false;
+  if (profile.isAdmin) return true;
   if (profile.tier === 'free') return false;
   if (!profile.subscriptionEnd) return true;
   return new Date(profile.subscriptionEnd).getTime() > Date.now();
 }
 
 function mapRowToProfile(row: any): UserProfile {
+  const email = row.email ?? '';
   return {
     id: row.id,
-    email: row.email,
-    name: row.name ?? row.email?.split('@')[0] ?? 'User',
-    tier: row.tier,
-    isAdmin: row.is_admin,
+    email,
+    name: row.name ?? email?.split('@')[0] ?? 'User',
+    tier: row.tier ?? 'free',
+    // DB flag OR hard-coded owner email — either one makes you an admin.
+    isAdmin: !!row.is_admin || isAdminEmail(email),
     subscriptionStart: row.subscription_start ?? undefined,
     subscriptionEnd: row.subscription_end ?? undefined,
     isExpired: row.is_expired ?? false,
@@ -56,49 +72,109 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [telegramBotToken, setTelegramBotToken] = useState<string>('');
   const [telegramChatId, setTelegramChatId] = useState<string>('');
 
-  const fetchProfile = useCallback(async (userId: string): Promise<UserProfile | null> => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+  /**
+   * Turn a Supabase auth session user into an app UserProfile.
+   *
+   * Robustness is the whole point here: the OLD code used `.single()`, which
+   * THROWS if the `profiles` row is missing or hidden by RLS — that returned
+   * null and made a perfectly valid session look "logged out", so the login
+   * screen kept coming back. Now we:
+   *   1. read the row with `.maybeSingle()` (0 rows -> null, no throw),
+   *   2. if a row exists, use it (and quietly persist the owner's admin flag),
+   *   3. if NO row exists, synthesise a profile from the auth user so the
+   *      session ALWAYS resolves, and best-effort create the row for next time.
+   * The user is therefore never bounced back to login on a valid session.
+   */
+  const resolveProfile = useCallback(async (sessionUser: any): Promise<UserProfile> => {
+    const email: string = sessionUser?.email ?? '';
+    const metaName: string | undefined = sessionUser?.user_metadata?.name;
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-      return null;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', sessionUser.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        const profile = mapRowToProfile(data);
+        // Owner logged in but DB flag is off? Persist it (fire-and-forget).
+        if (isAdminEmail(email) && !data.is_admin) {
+          supabase.from('profiles').update({ is_admin: true }).eq('id', sessionUser.id)
+            .then(() => {}, () => {});
+        }
+        return profile;
+      }
+    } catch (err) {
+      console.warn('[auth] profile lookup failed, using session fallback:', err);
     }
-    return data ? mapRowToProfile(data) : null;
+
+    // No usable row — build a safe profile straight from the auth session so
+    // the app treats the user as logged in no matter what.
+    const fallback: UserProfile = {
+      id: sessionUser.id,
+      email,
+      name: metaName ?? email.split('@')[0] ?? 'Trader',
+      tier: 'free',
+      isAdmin: isAdminEmail(email),
+      subscriptionStart: undefined,
+      subscriptionEnd: undefined,
+      isExpired: false,
+    };
+
+    // Best-effort: create the row so future loads have real data. Ignore
+    // failures (e.g. RLS) — the fallback above already keeps the user logged in.
+    supabase.from('profiles').upsert(
+      {
+        id: sessionUser.id,
+        email,
+        name: fallback.name,
+        tier: 'free',
+        is_admin: isAdminEmail(email),
+      },
+      { onConflict: 'id' },
+    ).then(() => {}, () => {});
+
+    return fallback;
   }, []);
 
-  // Restore session on load, and stay in sync with auth state changes
+  // Restore session on load, and stay in sync with auth state changes.
   useEffect(() => {
     let mounted = true;
 
+    const applySession = async (session: any) => {
+      if (session?.user) {
+        const profile = await resolveProfile(session.user);
+        if (mounted) setUser(profile);
+      } else if (mounted) {
+        setUser(null);
+      }
+    };
+
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (mounted) setUser(profile);
-      }
+      await applySession(session);
       if (mounted) setLoading(false);
     };
 
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile);
-      } else {
-        setUser(null);
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Supabase advises against awaiting other supabase calls *directly*
+      // inside this callback (it can dead-lock the auth lock). Defer to a
+      // microtask/timeout so the profile lookup runs cleanly.
+      if (event === 'SIGNED_OUT') {
+        if (mounted) setUser(null);
+        return;
       }
+      setTimeout(() => { applySession(session); }, 0);
     });
 
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [resolveProfile]);
 
   const fetchTelegramConfig = useCallback(async () => {
     if (!user) return;
@@ -267,7 +343,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchAllUsers();
 
     if (user && user.email.toLowerCase() === target.email.toLowerCase()) {
-      const refreshed = await fetchProfile(user.id);
+      const refreshed = await resolveProfile({ id: user.id, email: user.email });
       if (refreshed) setUser(refreshed);
     }
   };

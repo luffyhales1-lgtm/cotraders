@@ -84,9 +84,9 @@ const NewsPage: React.FC = () => {
       <main className="relative z-10 max-w-7xl mx-auto px-4 lg:px-8 py-8">
         <UpgradeBanner />
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 animate-fade-up">
           <div>
-            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2">
+            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2 text-shimmer">
               <Newspaper className="h-7 w-7 text-rose-400" />
               Institutional Intelligence & Market News
             </h1>
@@ -137,7 +137,7 @@ const NewsPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 scene-3d">
               {visibleNews.map(item => (
                 <NewsCard key={item.id} item={item} />
               ))}
@@ -185,7 +185,7 @@ const NewsCard: React.FC<{ item: MarketNews }> = ({ item }) => {
   const liveTime = item.publishedOn ? relativeTime(item.publishedOn) : item.time;
 
   return (
-    <div className="p-6 rounded-2xl glass-panel glass-panel-interactive transition-colors flex flex-col justify-between">
+    <div className="p-6 rounded-2xl glass-panel glass-panel-interactive transition-colors flex flex-col justify-between card-3d">
       <div>
         <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
           <span className="font-bold text-slate-200 truncate">{item.source}</span>

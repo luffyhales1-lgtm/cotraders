@@ -5,9 +5,10 @@ import {
   Activity, 
   TrendingUp, 
   Sparkles, 
-  LineChart, 
-  Scan, 
-  Crown, 
+  LineChart,
+  Scan,
+  ScanEye,
+  Crown,
   Award, 
   ShieldCheck, 
   Radio, 
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/signals', label: 'AI Signals', icon: Sparkles, iconColor: 'text-cyan-400', vipOnly: true },
   { path: '/charts', label: 'Pro Charts', icon: LineChart, iconColor: 'text-indigo-400', vipOnly: true },
   { path: '/scanner', label: '1000+ Scanner', icon: Scan, iconColor: 'text-amber-400', vipOnly: true },
+  { path: '/analyze', label: 'AI Chart Analysis', icon: ScanEye, iconColor: 'text-violet-400', vipOnly: true },
   { path: '/journal', label: 'Paper Journal', icon: BookMarked, iconColor: 'text-emerald-400' },
   { path: '/news', label: 'News', icon: Newspaper, iconColor: 'text-sky-400' },
   { path: '/analytics', label: 'Analytics', icon: Award, iconColor: 'text-purple-400' },
@@ -160,7 +162,12 @@ export const Navbar: React.FC = () => {
               <div className="text-right hidden sm:block">
                 <div className="flex items-center justify-end gap-2">
                   <span className="text-xs font-bold text-slate-200">{user.name}</span>
-                  {user.tier !== 'free' ? (
+                  {user.isAdmin && (
+                    <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-[10px] gap-1 px-2 py-0.5 font-extrabold">
+                      <ShieldCheck className="h-4 w-4 text-rose-400" /> ADMIN
+                    </Badge>
+                  )}
+                  {isVipMember ? (
                     <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] gap-1.5 px-2 py-0.5 font-extrabold">
                       <Crown className="h-4 w-4 text-amber-400" /> VIP
                     </Badge>
