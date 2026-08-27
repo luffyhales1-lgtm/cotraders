@@ -30,7 +30,7 @@
     --secondary-foreground: 210 32% 88%;
 
     --muted: 224 26% 13%;
-    --muted-foreground: 215 20% 62%;
+    --muted-foreground: 222 26% 66%;
 
     --accent: 199 89% 55%;            /* cyan accent */
     --accent-foreground: 224 47% 6%;
@@ -100,10 +100,11 @@
   /* text — neutrals to light */
   .text-slate-900,
   .text-slate-800 { color: hsl(210 40% 95%) !important; }
-  .text-slate-700 { color: hsl(212 30% 84%) !important; }
-  .text-slate-600 { color: hsl(215 20% 68%) !important; }
-  .text-slate-500 { color: hsl(215 18% 58%) !important; }
-  .text-slate-400 { color: hsl(215 16% 50%) !important; }
+  .text-slate-700 { color: hsl(216 40% 84%) !important; }
+  .text-slate-600 { color: hsl(219 34% 74%) !important; }
+  .text-slate-500 { color: hsl(222 30% 66%) !important; }
+  .text-slate-400 { color: hsl(224 28% 60%) !important; }
+  .text-slate-300 { color: hsl(226 26% 56%) !important; }
   .text-slate-950 { color: hsl(210 40% 96%) !important; }
 
   /* text — deep accent shades lightened for dark contrast */

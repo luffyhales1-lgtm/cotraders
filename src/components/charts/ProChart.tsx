@@ -241,11 +241,11 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
                         <stop offset="100%" stopColor={lineColor} stopOpacity={0.02} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} minTickGap={40} />
-                    <YAxis domain={priceDomain} stroke="#94a3b8" fontSize={11} tickLine={false} orientation="right" tickFormatter={fmtPrice} width={64} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1c2740" />
+                    <XAxis dataKey="time" stroke="#6b7aa6" fontSize={11} tickLine={false} minTickGap={40} />
+                    <YAxis domain={priceDomain} stroke="#6b7aa6" fontSize={11} tickLine={false} orientation="right" tickFormatter={fmtPrice} width={64} />
                     <Tooltip
-                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: 12 }}
+                      contentStyle={{ backgroundColor: '#0d1220', borderColor: '#1e2740', borderRadius: '8px', color: '#e2e8f0', fontSize: 12 }}
                       formatter={(val: any, name: string) => [`$${fmtPrice(Number(val))}`, name.toUpperCase()]}
                     />
                     <Area type="monotone" dataKey="close" stroke={lineColor} strokeWidth={2} fill="url(#priceFill)" name="price" dot={false} />
@@ -261,7 +261,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
                       <XAxis dataKey="time" hide />
                       <YAxis hide domain={[0, 'auto']} orientation="right" width={64} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: 12 }}
+                        contentStyle={{ backgroundColor: '#0d1220', borderColor: '#1e2740', borderRadius: '8px', color: '#e2e8f0', fontSize: 12 }}
                         formatter={(val: any) => [Number(val).toLocaleString(undefined, { maximumFractionDigits: 0 }), 'VOLUME']}
                       />
                       <Bar dataKey="volume" radius={[1, 1, 0, 0]}>

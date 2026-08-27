@@ -219,10 +219,10 @@ export const StrategyBacktest: React.FC = () => {
                     <stop offset="95%" stopColor={profitable ? '#10b981' : '#f43f5e'} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="trade" stroke="#94a3b8" fontSize={10} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis stroke="#94a3b8" fontSize={10} domain={['auto', 'auto']} />
-                <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a', borderRadius: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1c2740" />
+                <XAxis dataKey="trade" stroke="#6b7aa6" fontSize={10} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis stroke="#6b7aa6" fontSize={10} domain={['auto', 'auto']} />
+                <Tooltip contentStyle={{ backgroundColor: '#0d1220', borderColor: '#1e2740', color: '#e2e8f0', borderRadius: 12 }} />
                 <Area type="monotone" dataKey="equity" stroke={profitable ? '#059669' : '#e11d48'} fillOpacity={1} fill="url(#colorEquity)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>

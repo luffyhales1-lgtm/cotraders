@@ -158,10 +158,10 @@ const JournalPage: React.FC = () => {
                       <stop offset="95%" stopColor={profitable ? '#10b981' : '#f43f5e'} stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} />
-                  <YAxis stroke="#94a3b8" fontSize={10} />
-                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', color: '#0f172a' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1c2740" />
+                  <XAxis dataKey="label" stroke="#6b7aa6" fontSize={10} />
+                  <YAxis stroke="#6b7aa6" fontSize={10} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0d1220', borderColor: '#1e2740', color: '#e2e8f0' }} />
                   <Area type="monotone" dataKey="r" stroke={profitable ? '#10b981' : '#f43f5e'} fill="url(#colorR)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
