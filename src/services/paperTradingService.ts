@@ -14,7 +14,6 @@
 import { Signal } from '@/types/trading';
 
 const BINANCE_FUTURES_URL = 'https://fapi.binance.com/fapi/v1';
-const BINANCE_SPOT_URL = 'https://api.binance.com/api/v3';
 const STORAGE_KEY = 'cotraders_paper_trades_v1';
 
 export type PaperStatus = 'OPEN' | 'WIN' | 'LOSS';
@@ -163,9 +162,9 @@ interface RawCandle { openTime: number; high: number; low: number; close: number
 async function fetchRawKlines(symbol: string, interval: string, limit: number): Promise<RawCandle[]> {
   const url = (base: string) => `${base}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
   try {
-    const res =
-      (await fetch(url(BINANCE_FUTURES_URL)).catch(() => null)) ??
-      (await fetch(url(BINANCE_SPOT_URL)).catch(() => null));
+    // Futures only — no spot fallback. Symbols that aren't Binance USDT-M perps
+    // simply return nothing and the trade stays OPEN until it can be resolved.
+    const res = await fetch(url(BINANCE_FUTURES_URL)).catch(() => null);
     if (!res || !res.ok) return [];
     const raw = await res.json();
     if (!Array.isArray(raw)) return [];

@@ -2,56 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   COTRADERS — "Daylight Desk" LIGHT THEME
+   Clean, aesthetic, institutional. Cool near-white surfaces,
+   confident indigo primary, emerald/rose kept for long/short.
+   Tuned for performance: no always-running blurred conic/orb
+   animations, no backdrop-filter on panels.
+   ============================================================ */
+
 @layer base {
   :root {
-    --background: 260 55% 4%;         /* near-black violet */
-    --foreground: 260 20% 96%;
+    --background: 220 33% 98%;        /* #F6F8FB cool near-white */
+    --foreground: 222 47% 11%;        /* slate-900 ink */
 
-    --card: 258 45% 8%;
-    --card-foreground: 260 15% 95%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 258 48% 7%;
-    --popover-foreground: 260 15% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 268 92% 62%;           /* electric violet */
-    --primary-foreground: 260 15% 98%;
+    --primary: 243 75% 58%;           /* indigo #4f46e5 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 258 30% 14%;
-    --secondary-foreground: 260 15% 92%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 222 40% 20%;
 
-    --muted: 258 25% 13%;
-    --muted-foreground: 258 12% 62%;
+    --muted: 220 20% 95%;
+    --muted-foreground: 220 10% 44%;
 
-    --accent: 271 91% 68%;
-    --accent-foreground: 260 15% 98%;
+    --accent: 243 75% 58%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 258 35% 18%;
-    --input: 258 35% 16%;
-    --ring: 268 92% 62%;
+    --border: 220 22% 89%;
+    --input: 220 22% 90%;
+    --ring: 243 75% 58%;
     --radius: 1rem;
 
-    /* theme tokens used by 3D/glass utilities below */
-    --glow-primary: 268 92% 62%;
-    --glow-secondary: 285 85% 65%;
-    --surface-1: 258 45% 9%;
-    --surface-2: 258 40% 12%;
+    /* theme tokens used by glass / effect utilities below */
+    --glow-primary: 243 75% 58%;
+    --glow-secondary: 199 89% 48%;    /* sky accent */
+    --surface-1: 0 0% 100%;
+    --surface-2: 220 30% 97%;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
     background-image:
-      radial-gradient(circle at 15% 0%, hsl(268 70% 22% / 0.35), transparent 45%),
-      radial-gradient(circle at 85% 15%, hsl(285 70% 20% / 0.28), transparent 40%),
-      radial-gradient(circle at 50% 100%, hsl(260 60% 12% / 0.6), transparent 60%);
+      radial-gradient(circle at 12% -5%, hsl(243 75% 60% / 0.08), transparent 42%),
+      radial-gradient(circle at 88% 8%, hsl(199 89% 55% / 0.07), transparent 40%),
+      radial-gradient(circle at 50% 110%, hsl(243 60% 70% / 0.06), transparent 55%);
     background-attachment: fixed;
   }
 }
 
 @layer base {
-  /* subtle noise/grid so flat panels don't read as flat */
+  /* faint grid so large flat areas don't read as blank */
   body::before {
     content: "";
     position: fixed;
@@ -59,10 +67,10 @@
     pointer-events: none;
     z-index: 0;
     background-image:
-      linear-gradient(hsl(270 60% 60% / 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(270 60% 60% / 0.05) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 40%, transparent 80%);
+      linear-gradient(hsl(222 40% 40% / 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(222 40% 40% / 0.04) 1px, transparent 1px);
+    background-size: 46px 46px;
+    mask-image: radial-gradient(ellipse 85% 60% at 50% 0%, black 35%, transparent 78%);
   }
 }
 
@@ -90,192 +98,151 @@
   scrollbar-width: none;
 }
 
-/* Custom utility classes for our theme */
+/* Accent gradient helpers (kept names; recoloured to the light scheme) */
 .bg-purple-gradient {
-  background: linear-gradient(135deg, #6b21a8, #4c1d95);
+  background: linear-gradient(135deg, hsl(243 75% 58%), hsl(262 78% 62%));
 }
 
 .bg-gold-gradient {
-  background: linear-gradient(135deg, #d97706, #b45309);
+  background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .text-purple-gradient {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  background: linear-gradient(90deg, #a855f7, #fbbf24);
+  background: linear-gradient(90deg, #4f46e5, #0ea5e9);
 }
 
 .border-purple-gradient {
-  border-image: linear-gradient(135deg, #6b21a8, #4c1d95) 1;
+  border-image: linear-gradient(135deg, hsl(243 75% 58%), hsl(199 89% 48%)) 1;
 }
 
 .border-gold-gradient {
-  border-image: linear-gradient(135deg, #d97706, #b45309) 1;
+  border-image: linear-gradient(135deg, #f59e0b, #d97706) 1;
 }
 
 /* ============================================================
-   3D GLASS THEME SYSTEM
+   GLASS / DEPTH SYSTEM  (light, GPU-cheap)
    ============================================================ */
 
-/* Base glass panel — layered gradient + inner highlight + outer glow shadow.
-   This is what gives flat cards a sense of depth without any 3D engine. */
+/* Base surface card — white with a soft, layered shadow.
+   No backdrop-filter (was a major paint cost on every panel). */
 .glass-panel {
   position: relative;
-  background:
-    linear-gradient(180deg, hsl(var(--surface-2) / 0.9), hsl(var(--surface-1) / 0.85));
-  border: 1px solid hsl(var(--border) / 0.8);
+  background: hsl(0 0% 100% / 0.94);
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   box-shadow:
-    0 1px 0 0 hsl(270 60% 70% / 0.08) inset,
-    0 -20px 40px -30px hsl(var(--glow-primary) / 0.25) inset,
-    0 20px 40px -20px hsl(260 60% 2% / 0.7),
-    0 0 0 1px hsl(260 60% 2% / 0.4);
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+    0 1px 2px hsl(222 47% 11% / 0.04),
+    0 10px 30px -18px hsl(222 47% 30% / 0.18);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
 .glass-panel::before {
-  /* top hairline sheen */
+  /* very subtle top hairline sheen */
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, hsl(var(--glow-primary) / 0.35), transparent 30%, transparent 70%, hsl(var(--glow-secondary) / 0.25));
+  background: linear-gradient(135deg, hsl(243 75% 60% / 0.18), transparent 40%, transparent 70%, hsl(199 89% 55% / 0.12));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 
-/* Hover lift — the "3D" tilt-and-rise effect used across cards */
+/* Hover lift */
 .glass-panel-interactive {
   cursor: pointer;
 }
 .glass-panel-interactive:hover {
-  transform: translateY(-4px) scale(1.005);
+  transform: translateY(-3px);
   border-color: hsl(var(--glow-primary) / 0.5);
   box-shadow:
-    0 1px 0 0 hsl(270 60% 70% / 0.12) inset,
-    0 -20px 40px -30px hsl(var(--glow-primary) / 0.35) inset,
-    0 30px 60px -20px hsl(260 60% 2% / 0.85),
-    0 0 40px -8px hsl(var(--glow-primary) / 0.35);
+    0 2px 4px hsl(222 47% 11% / 0.06),
+    0 20px 44px -20px hsl(243 75% 45% / 0.30);
 }
 
-/* Glow ring — for badges, status dots, active nav items */
+/* Glow ring — badges, status dots, active nav */
 .glow-ring {
-  box-shadow: 0 0 0 1px hsl(var(--glow-primary) / 0.4), 0 0 18px 2px hsl(var(--glow-primary) / 0.35);
+  box-shadow: 0 0 0 1px hsl(var(--glow-primary) / 0.35), 0 0 14px 1px hsl(var(--glow-primary) / 0.22);
 }
 
-/* Glowing gradient button surface */
+/* Gradient button surface */
 .btn-glow {
-  background: linear-gradient(135deg, hsl(268 92% 62%), hsl(285 85% 55%));
+  background: linear-gradient(135deg, hsl(243 75% 58%), hsl(262 78% 60%));
+  color: #fff;
   box-shadow:
-    0 1px 0 0 hsl(270 90% 85% / 0.4) inset,
-    0 8px 24px -8px hsl(var(--glow-primary) / 0.6);
+    0 1px 0 0 hsl(0 0% 100% / 0.25) inset,
+    0 10px 24px -10px hsl(243 75% 45% / 0.55);
   transition: box-shadow 0.3s ease, transform 0.3s ease, filter 0.3s ease;
 }
 .btn-glow:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.05);
   box-shadow:
-    0 1px 0 0 hsl(270 90% 85% / 0.5) inset,
-    0 10px 30px -6px hsl(var(--glow-primary) / 0.75);
+    0 1px 0 0 hsl(0 0% 100% / 0.35) inset,
+    0 12px 28px -8px hsl(243 75% 45% / 0.7);
   transform: translateY(-1px);
 }
 
-/* Floating orb / ambient light blob — decorative background element */
+/* Ambient blob — static & light (was animated blur(60px), a big cost) */
 .ambient-orb {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(60px);
-  opacity: 0.5;
+  filter: blur(48px);
+  opacity: 0.35;
   pointer-events: none;
-  animation: orb-float 10s ease-in-out infinite;
-}
-
-@keyframes orb-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(0, -18px) scale(1.05); }
 }
 
 @keyframes glow-pulse {
-  0%, 100% { opacity: 0.55; }
+  0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
 .animate-glow-pulse {
   animation: glow-pulse 2.4s ease-in-out infinite;
 }
 
-/* Numeric/stat text with a subtle glow, for headline KPIs */
+/* Headline KPI text with subtle tint */
 .text-glow-primary {
   color: hsl(var(--glow-primary));
-  text-shadow: 0 0 18px hsl(var(--glow-primary) / 0.55);
+  text-shadow: 0 1px 10px hsl(var(--glow-primary) / 0.28);
 }
 .text-glow-emerald {
-  color: hsl(152 76% 55%);
-  text-shadow: 0 0 18px hsl(152 76% 45% / 0.5);
+  color: hsl(152 62% 40%);
+  text-shadow: 0 1px 10px hsl(152 62% 40% / 0.25);
 }
 
-/* Section divider with center glow, matches reference site's rules */
+/* Section divider with center glow */
 .divider-glow {
   height: 1px;
-  background: linear-gradient(90deg, transparent, hsl(var(--glow-primary) / 0.6), transparent);
+  background: linear-gradient(90deg, transparent, hsl(var(--glow-primary) / 0.45), transparent);
 }
 
 /* ============================================================
-   NEW 3D INTERFACE SYSTEM  (v2)
-   These classes are referenced across the app (dashboard, pricing,
-   login, journal, ...). Previously undefined -> they rendered as
-   nothing, so the site only looked "recoloured". Defining them here
-   upgrades the WHOLE site to a real depth/parallax 3D interface while
-   keeping the exact same violet colour tokens and the logo untouched.
+   INTERFACE SYSTEM (v2) — light & performant
+   Class names preserved (referenced across every page). The
+   expensive always-on animations (blurred conic spin, drifting
+   orbs) are removed; hover-only 3D tilt is kept because it only
+   paints on interaction.
    ============================================================ */
 
-/* ---- Living aurora backdrop (fills AmbientBackground) ---------------- */
+/* ---- Ambient backdrop (fills AmbientBackground) — STATIC wash ---- */
 .aurora-bg {
   position: absolute;
-  inset: -20%;
+  inset: -10%;
   z-index: 0;
   pointer-events: none;
   background:
-    radial-gradient(38% 44% at 18% 22%, hsl(268 92% 60% / 0.42), transparent 70%),
-    radial-gradient(34% 40% at 82% 18%, hsl(190 90% 55% / 0.30), transparent 70%),
-    radial-gradient(46% 50% at 60% 88%, hsl(285 85% 60% / 0.38), transparent 72%),
-    radial-gradient(40% 44% at 30% 80%, hsl(220 90% 58% / 0.24), transparent 72%);
-  filter: blur(40px) saturate(125%);
+    radial-gradient(38% 42% at 18% 20%, hsl(243 80% 62% / 0.10), transparent 70%),
+    radial-gradient(34% 38% at 82% 16%, hsl(199 89% 60% / 0.09), transparent 70%),
+    radial-gradient(44% 48% at 62% 90%, hsl(262 78% 66% / 0.08), transparent 72%);
+  filter: blur(22px);
   opacity: 0.9;
-  animation: aurora-drift 26s ease-in-out infinite alternate;
-  will-change: transform, filter;
-}
-.aurora-bg::after {
-  /* slow rotating conic sheen for the "moving light" feel */
-  content: "";
-  position: absolute;
-  inset: -30%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    hsl(268 92% 62% / 0.16) 60deg,
-    transparent 140deg,
-    hsl(285 85% 65% / 0.14) 220deg,
-    transparent 320deg
-  );
-  filter: blur(30px);
-  animation: aurora-spin 40s linear infinite;
 }
 
-@keyframes aurora-drift {
-  0%   { transform: translate3d(-3%, -2%, 0) scale(1);    }
-  50%  { transform: translate3d(4%, 3%, 0) scale(1.08);   }
-  100% { transform: translate3d(-2%, 4%, 0) scale(1.04);  }
-}
-@keyframes aurora-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ---- 3D perspective scene + tilting cards --------------------------- */
+/* ---- 3D perspective scene + hover tilt cards ---- */
 .scene-3d {
   perspective: 1600px;
   perspective-origin: 50% 30%;
@@ -286,41 +253,37 @@
   transform-style: preserve-3d;
   transform: translateZ(0);
   transition:
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.5s ease,
-    border-color 0.5s ease;
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.4s ease,
+    border-color 0.4s ease;
   box-shadow:
-    0 1px 0 0 hsl(270 70% 80% / 0.10) inset,
-    0 18px 40px -22px hsl(260 60% 2% / 0.85),
-    0 2px 8px -4px hsl(260 60% 2% / 0.6);
+    0 1px 2px hsl(222 47% 11% / 0.04),
+    0 10px 28px -18px hsl(222 47% 30% / 0.18);
 }
 .card-3d::after {
-  /* diagonal glass sheen that sweeps on hover */
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(115deg, transparent 30%, hsl(0 0% 100% / 0.06) 45%, transparent 60%);
+  background: linear-gradient(115deg, transparent 35%, hsl(243 75% 60% / 0.06) 48%, transparent 62%);
   opacity: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.4s ease;
   pointer-events: none;
 }
 .card-3d:hover {
-  transform: rotateX(6deg) rotateY(-6deg) translateY(-8px) translateZ(30px);
-  border-color: hsl(var(--glow-primary) / 0.55);
+  transform: rotateX(4deg) rotateY(-4deg) translateY(-6px) translateZ(20px);
+  border-color: hsl(var(--glow-primary) / 0.5);
   box-shadow:
-    0 1px 0 0 hsl(270 70% 85% / 0.16) inset,
-    0 40px 70px -30px hsl(260 60% 2% / 0.9),
-    0 0 44px -8px hsl(var(--glow-primary) / 0.5);
+    0 3px 6px hsl(222 47% 11% / 0.06),
+    0 30px 56px -28px hsl(243 75% 45% / 0.35);
 }
 .card-3d:hover::after { opacity: 1; }
 
-/* A stronger interactive pop for pricing / feature tiles */
 .card-3d-pop:hover {
-  transform: rotateX(4deg) rotateY(4deg) translateY(-10px) scale(1.02) translateZ(40px);
+  transform: rotateX(3deg) rotateY(3deg) translateY(-8px) scale(1.015) translateZ(28px);
 }
 
-/* ---- Animated aurora border (hero / feature frames) ----------------- */
+/* ---- Animated gradient border (hero / feature frames) — cheap ---- */
 .border-aurora {
   position: relative;
   isolation: isolate;
@@ -333,13 +296,13 @@
   padding: 1.5px;
   background: linear-gradient(
     130deg,
-    hsl(268 92% 62%),
-    hsl(190 90% 55%),
-    hsl(285 85% 65%),
-    hsl(268 92% 62%)
+    hsl(243 75% 58%),
+    hsl(199 89% 55%),
+    hsl(262 78% 64%),
+    hsl(243 75% 58%)
   );
   background-size: 300% 300%;
-  animation: aurora-border 8s ease infinite;
+  animation: aurora-border 9s ease infinite;
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask-composite: exclude;
@@ -352,80 +315,78 @@
   100% { background-position: 0% 50%; }
 }
 
-/* ---- Shimmering gradient headline text ------------------------------ */
+/* ---- Shimmering headline text (light) ---- */
 .text-shimmer {
   background: linear-gradient(
     100deg,
-    hsl(268 92% 72%) 0%,
-    hsl(0 0% 100%) 25%,
-    hsl(285 90% 72%) 45%,
-    hsl(190 90% 65%) 65%,
-    hsl(268 92% 72%) 100%
+    hsl(243 75% 46%) 0%,
+    hsl(222 47% 16%) 28%,
+    hsl(199 89% 45%) 52%,
+    hsl(262 70% 52%) 72%,
+    hsl(243 75% 46%) 100%
   );
   background-size: 220% auto;
   -webkit-background-clip: text;
           background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: text-shimmer 6s linear infinite;
+  animation: text-shimmer 7s linear infinite;
 }
 @keyframes text-shimmer {
   to { background-position: 220% center; }
 }
 
-/* ---- Entrance + floating motion ------------------------------------- */
+/* ---- Entrance motion ---- */
 .animate-fade-up {
-  animation: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(22px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .float-3d {
   animation: float-3d 7s ease-in-out infinite;
 }
 @keyframes float-3d {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50%      { transform: translateY(-10px) rotate(0.4deg); }
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
 }
 
-/* Small utility: a soft inner-lit pill/tag used across the new UI */
+/* Soft pill/tag */
 .chip-3d {
-  background: linear-gradient(180deg, hsl(var(--surface-2) / 0.9), hsl(var(--surface-1) / 0.8));
-  border: 1px solid hsl(var(--border) / 0.8);
-  box-shadow: 0 1px 0 0 hsl(270 70% 80% / 0.10) inset, 0 8px 20px -14px hsl(260 60% 2% / 0.8);
+  background: hsl(0 0% 100% / 0.9);
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 1px 2px hsl(222 47% 11% / 0.05);
 }
 
-/* ---- Premium scrollbar (whole site) --------------------------------- */
+/* ---- Premium scrollbar ---- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--glow-primary) / 0.5) transparent;
+  scrollbar-color: hsl(var(--glow-primary) / 0.45) transparent;
 }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, hsl(268 92% 55% / 0.7), hsl(285 85% 55% / 0.7));
+  background: linear-gradient(180deg, hsl(243 75% 62% / 0.55), hsl(199 89% 55% / 0.55));
   border-radius: 9999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, hsl(268 92% 62%), hsl(285 85% 62%));
+  background: linear-gradient(180deg, hsl(243 75% 58%), hsl(199 89% 50%));
   background-clip: padding-box;
 }
 
 html { scroll-behavior: smooth; }
 
-/* Respect reduced-motion: kill the heavy ambient/scene animations */
+/* Respect reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  .aurora-bg,
-  .aurora-bg::after,
   .text-shimmer,
   .border-aurora::before,
   .float-3d,
   .animate-glow-pulse,
-  .ambient-orb {
+  .animate-marquee {
     animation: none !important;
   }
   .card-3d,

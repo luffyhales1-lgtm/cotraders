@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Activity, 
-  TrendingUp, 
-  Sparkles, 
+import {
+  Activity,
+  TrendingUp,
+  Sparkles,
   LineChart,
   Scan,
   ScanEye,
   Crown,
-  Award, 
-  ShieldCheck, 
-  Radio, 
-  LogIn, 
+  Award,
+  ShieldCheck,
+  Radio,
+  LogIn,
   LogOut,
   Newspaper,
   Settings,
@@ -34,16 +34,16 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: TrendingUp, iconColor: 'text-emerald-400' },
-  { path: '/signals', label: 'AI Signals', icon: Sparkles, iconColor: 'text-cyan-400', vipOnly: true },
-  { path: '/charts', label: 'Pro Charts', icon: LineChart, iconColor: 'text-indigo-400', vipOnly: true },
-  { path: '/scanner', label: '1000+ Scanner', icon: Scan, iconColor: 'text-amber-400', vipOnly: true },
-  { path: '/analyze', label: 'AI Chart Analysis', icon: ScanEye, iconColor: 'text-violet-400', vipOnly: true },
-  { path: '/journal', label: 'Paper Journal', icon: BookMarked, iconColor: 'text-emerald-400' },
-  { path: '/news', label: 'News', icon: Newspaper, iconColor: 'text-sky-400' },
-  { path: '/analytics', label: 'Analytics', icon: Award, iconColor: 'text-purple-400' },
-  { path: '/bot-settings', label: 'Bot Settings', icon: Settings, iconColor: 'text-teal-400', vipOnly: true },
-  { path: '/pricing', label: 'VIP Plans', icon: Crown, iconColor: 'text-amber-400' },
+  { path: '/', label: 'Dashboard', icon: TrendingUp, iconColor: 'text-emerald-600' },
+  { path: '/signals', label: 'AI Signals', icon: Sparkles, iconColor: 'text-cyan-600', vipOnly: true },
+  { path: '/charts', label: 'Pro Charts', icon: LineChart, iconColor: 'text-indigo-600', vipOnly: true },
+  { path: '/scanner', label: '1000+ Scanner', icon: Scan, iconColor: 'text-amber-600', vipOnly: true },
+  { path: '/analyze', label: 'AI Chart Analysis', icon: ScanEye, iconColor: 'text-indigo-600', vipOnly: true },
+  { path: '/journal', label: 'Paper Journal', icon: BookMarked, iconColor: 'text-emerald-600' },
+  { path: '/news', label: 'News', icon: Newspaper, iconColor: 'text-sky-600' },
+  { path: '/analytics', label: 'Analytics', icon: Award, iconColor: 'text-indigo-600' },
+  { path: '/bot-settings', label: 'Bot Settings', icon: Settings, iconColor: 'text-teal-600', vipOnly: true },
+  { path: '/pricing', label: 'VIP Plans', icon: Crown, iconColor: 'text-amber-600' },
 ];
 
 export const Navbar: React.FC = () => {
@@ -69,7 +69,7 @@ export const Navbar: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-50 bg-[hsl(258_45%_6%/0.85)] backdrop-blur-xl border-b border-white/[0.06] px-4 lg:px-8 py-3 transition-all duration-300 shadow-[0_1px_0_0_hsl(270_60%_70%/0.06)_inset,0_20px_40px_-30px_hsl(260_60%_2%/0.9)]">
+    <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-4 lg:px-8 py-3 transition-all duration-300 shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset,0_12px_30px_-24px_rgba(15,23,42,0.25)]">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">
@@ -79,11 +79,11 @@ export const Navbar: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-lg text-white tracking-tight">COTRADERS</span>
-              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-violet-500/15 text-violet-300 border border-violet-500/30">AI PRO</span>
+              <span className="font-black text-lg text-slate-900 tracking-tight">COTRADERS</span>
+              <span className="px-2 py-0.5 text-[10px] font-black rounded-md bg-indigo-100 text-indigo-700 border border-indigo-200">AI PRO</span>
             </div>
-            <p className="text-[10px] text-slate-400 tracking-wider uppercase font-bold flex items-center gap-1">
-              <Radio className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
+            <p className="text-[10px] text-slate-500 tracking-wider uppercase font-bold flex items-center gap-1">
+              <Radio className="h-3.5 w-3.5 text-emerald-600 animate-pulse" />
               1-Min Auto-Scan & Telegram Active
             </p>
           </div>
@@ -95,7 +95,7 @@ export const Navbar: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => setMenuOpen((prev) => !prev)}
-            className="gap-2 text-xs font-bold text-slate-200"
+            className="gap-2 text-xs font-bold text-slate-700"
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             Menu
@@ -112,15 +112,15 @@ export const Navbar: React.FC = () => {
                       <div
                         className={`flex items-center justify-between px-4 py-2.5 text-xs font-bold transition-colors duration-150 ${
                           isActive(item.path)
-                            ? 'bg-violet-500/10 text-white'
-                            : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                       >
                         <span className="flex items-center gap-3">
                           <Icon className={`h-4.5 w-4.5 ${item.iconColor}`} />
                           {item.label}
                         </span>
-                        {locked && <Lock className="h-3.5 w-3.5 text-amber-400" />}
+                        {locked && <Lock className="h-3.5 w-3.5 text-amber-600" />}
                       </div>
                     </Link>
                   );
@@ -129,10 +129,10 @@ export const Navbar: React.FC = () => {
                 {user?.isAdmin && (
                   <Link to="/admin" onClick={() => setMenuOpen(false)}>
                     <div
-                      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold border-t border-white/[0.06] mt-1 pt-3 transition-colors duration-150 ${
+                      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold border-t border-slate-200 mt-1 pt-3 transition-colors duration-150 ${
                         isActive('/admin')
-                          ? 'bg-amber-500/10 text-amber-300'
-                          : 'text-amber-400 hover:bg-amber-500/10'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'text-amber-600 hover:bg-amber-50'
                       }`}
                     >
                       <ShieldCheck className="h-4.5 w-4.5" />
@@ -158,34 +158,34 @@ export const Navbar: React.FC = () => {
           )}
 
           {user ? (
-            <div className="flex items-center gap-3 pl-3 border-l border-white/[0.06]">
+            <div className="flex items-center gap-3 pl-3 border-l border-slate-200">
               <div className="text-right hidden sm:block">
                 <div className="flex items-center justify-end gap-2">
-                  <span className="text-xs font-bold text-slate-200">{user.name}</span>
+                  <span className="text-xs font-bold text-slate-800">{user.name}</span>
                   {user.isAdmin && (
-                    <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-[10px] gap-1 px-2 py-0.5 font-extrabold">
-                      <ShieldCheck className="h-4 w-4 text-rose-400" /> ADMIN
+                    <Badge className="bg-rose-100 text-rose-700 border-rose-200 text-[10px] gap-1 px-2 py-0.5 font-extrabold">
+                      <ShieldCheck className="h-4 w-4 text-rose-600" /> ADMIN
                     </Badge>
                   )}
                   {isVipMember ? (
-                    <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] gap-1.5 px-2 py-0.5 font-extrabold">
-                      <Crown className="h-4 w-4 text-amber-400" /> VIP
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] gap-1.5 px-2 py-0.5 font-extrabold">
+                      <Crown className="h-4 w-4 text-amber-600" /> VIP
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] border-slate-700 text-slate-400">FREE</Badge>
+                    <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-500">FREE</Badge>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-400">{user.email}</p>
+                <p className="text-[10px] text-slate-500">{user.email}</p>
               </div>
 
-              <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="text-slate-400 hover:text-rose-400 transition-all duration-200">
+              <Button variant="ghost" size="icon" onClick={logout} title="Logout" className="text-slate-500 hover:text-rose-600 transition-all duration-200">
                 <LogOut className="h-5 w-5" />
               </Button>
             </div>
           ) : (
             <Link to="/login">
-              <Button size="sm" variant="outline" className="gap-2.5 text-xs font-bold text-slate-200">
-                <LogIn className="h-5 w-5 text-emerald-400" />
+              <Button size="sm" variant="outline" className="gap-2.5 text-xs font-bold text-slate-700">
+                <LogIn className="h-5 w-5 text-emerald-600" />
                 Log In
               </Button>
             </Link>

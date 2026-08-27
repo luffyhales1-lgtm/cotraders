@@ -17,28 +17,28 @@ export const VIPGateModal: React.FC<VIPGateModalProps> = ({
   const { instagramUrl, vipMonthlyPrice, vipYearlyPrice } = useAuth();
 
   return (
-    <div className="relative my-10 p-10 md:p-14 rounded-2xl bg-gradient-to-b from-slate-900/95 via-slate-950 to-slate-950 border border-amber-500/40 text-center shadow-2xl overflow-hidden backdrop-blur-xl max-w-2xl mx-auto">
+    <div className="relative my-10 p-10 md:p-14 rounded-2xl bg-gradient-to-b from-amber-50 via-white to-white border border-amber-300 text-center shadow-2xl overflow-hidden backdrop-blur-xl max-w-2xl mx-auto">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-1.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent shadow-lg shadow-amber-400/50" />
 
-      <div className="h-20 w-20 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-500/10">
-        <Crown className="h-11 w-11 text-amber-400 animate-pulse" />
+      <div className="h-20 w-20 rounded-2xl bg-amber-100 border border-amber-200 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-200">
+        <Crown className="h-11 w-11 text-amber-600 animate-pulse" />
       </div>
 
-      <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono text-xs px-4 py-2 mb-4">
+      <Badge className="bg-amber-100 text-amber-700 border-amber-200 font-mono text-xs px-4 py-2 mb-4">
         INSTITUTIONAL TERMINAL LOCKED
       </Badge>
 
-      <h2 className="text-2.5xl md:text-3.5xl font-black text-slate-100 tracking-tight">{title}</h2>
-      <p className="text-sm text-slate-300 mt-3 max-w-xl mx-auto leading-relaxed">{description}</p>
+      <h2 className="text-2.5xl md:text-3.5xl font-black text-slate-900 tracking-tight">{title}</h2>
+      <p className="text-sm text-slate-600 mt-3 max-w-xl mx-auto leading-relaxed">{description}</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-8 max-w-md mx-auto text-xs font-mono">
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-amber-400 font-bold block">VIP Monthly</span>
-          <span className="text-slate-100 font-black text-base">${vipMonthlyPrice} / Mo</span>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-amber-600 font-bold block">VIP Monthly</span>
+          <span className="text-slate-900 font-black text-base">${vipMonthlyPrice} / Mo</span>
         </div>
-        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
-          <span className="text-purple-400 font-bold block">VIP Yearly</span>
-          <span className="text-slate-100 font-black text-base">${vipYearlyPrice} / Yr</span>
+        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <span className="text-indigo-600 font-bold block">VIP Yearly</span>
+          <span className="text-slate-900 font-black text-base">${vipYearlyPrice} / Yr</span>
         </div>
       </div>
 
@@ -50,13 +50,13 @@ export const VIPGateModal: React.FC<VIPGateModalProps> = ({
         </a>
 
         <Link to="/login" className="w-full sm:w-auto">
-          <Button variant="outline" className="w-full border-slate-700 text-slate-200 hover:bg-slate-800 font-bold text-xs py-6 px-8 gap-3">
-            <LogIn className="h-5 w-5 text-emerald-400" /> Log In Account
+          <Button variant="outline" className="w-full border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-xs py-6 px-8 gap-3">
+            <LogIn className="h-5 w-5 text-emerald-600" /> Log In Account
           </Button>
         </Link>
       </div>
 
-      <div className="mt-8 pt-5 border-t border-slate-800/80 text-[12px] text-slate-400">
+      <div className="mt-8 pt-5 border-t border-slate-200 text-[12px] text-slate-500">
         Direct activation assistance by Admin Kaif (@abdul_kaif12)
       </div>
     </div>

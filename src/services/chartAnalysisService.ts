@@ -1,5 +1,9 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ManualPaperTradeInput } from '@/services/paperTradingService';
+import { fetchKlines } from '@/services/binanceApi';
+import { evaluateAllStrategies } from '@/services/strategies';
+import { buildSignalFromStrategyHit, ScanTarget } from '@/services/signalEngine';
+import { CandleData } from '@/types/trading';
 
 /**
  * AI Chart Screenshot Analysis
@@ -192,10 +196,12 @@ function normalise(raw: any, ctx: AnalyzeContext): ChartAnalysis {
 // ---------------------------------------------------------------------------
 
 /**
- * Sends a chart screenshot (data-URL or raw base64) to the analyzer edge
- * function and returns a normalised ChartAnalysis. Throws a friendly Error if
- * the function isn't deployed / no vision key is configured, so the UI can tell
- * the user exactly what to do rather than showing fake results.
+ * Sends a chart screenshot to the analyzer edge function and returns a
+ * normalised ChartAnalysis. If the vision function isn't deployed / has no key,
+ * it transparently falls back to a REAL live technical read of the pair the user
+ * typed — running all 21 strategies on live Binance futures candles and telling
+ * them the best trade. Nothing is fabricated: the fallback uses live market data,
+ * not the image pixels, and is clearly labelled as such in the summary.
  */
 export async function analyzeChartImage(
   imageDataUrl: string,
@@ -203,33 +209,186 @@ export async function analyzeChartImage(
 ): Promise<ChartAnalysis> {
   if (!imageDataUrl) throw new Error('Please upload a chart screenshot first.');
 
-  const { data, error } = await supabase.functions.invoke('analyze-chart', {
-    body: { image: imageDataUrl, context: ctx },
+  // 1) Try the real vision model server-side (best — reads the actual image).
+  try {
+    const { data, error } = await supabase.functions.invoke('analyze-chart', {
+      body: { image: imageDataUrl, context: ctx },
+    });
+    if (!error && data && !(data as any).error) {
+      return normalise((data as any).analysis ?? data, ctx);
+    }
+  } catch {
+    /* fall through to the live-engine read below */
+  }
+
+  // 2) Vision add-on unavailable — run a genuine LIVE 21-strategy analysis of the
+  //    pair the user specified. This is real market analysis, not image reading.
+  const pairGuess = (ctx.pair || '').trim();
+  if (pairGuess) {
+    return analyzePairLive(pairGuess, ctx.timeframe || '', ctx);
+  }
+
+  throw new Error(
+    'To analyze without the vision add-on, type the Pair (e.g. BTC/USDT) in the Pair box — I\'ll run a full LIVE 21-strategy read of that market and give you the best trade. (Or deploy the "analyze-chart" edge function with a vision key to read the screenshot directly.)',
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LIVE technical analysis fallback — all 21 strategies on real Binance candles.
+// ---------------------------------------------------------------------------
+
+/** Detect pivot highs/lows over the recent window (fractal, lookback 3). */
+function findPivots(candles: CandleData[], look = 3): { highs: number[]; lows: number[] } {
+  const highs: number[] = [];
+  const lows: number[] = [];
+  for (let i = look; i < candles.length - look; i++) {
+    let isHigh = true;
+    let isLow = true;
+    for (let j = i - look; j <= i + look; j++) {
+      if (j === i) continue;
+      if (candles[j].high >= candles[i].high) isHigh = false;
+      if (candles[j].low <= candles[i].low) isLow = false;
+    }
+    if (isHigh) highs.push(candles[i].high);
+    if (isLow) lows.push(candles[i].low);
+  }
+  return { highs, lows };
+}
+
+/** Collapse near-identical levels and return the N nearest to the reference price. */
+function pickLevels(values: number[], ref: number, side: 'above' | 'below', count = 3): LevelHint[] {
+  const filtered = values.filter((v) => (side === 'above' ? v > ref : v < ref));
+  const deduped: number[] = [];
+  for (const v of filtered.sort((a, b) => (side === 'above' ? a - b : b - a))) {
+    if (!deduped.some((d) => Math.abs(d - v) / (ref || 1) < 0.0025)) deduped.push(v);
+    if (deduped.length >= count) break;
+  }
+  return deduped.map((price) => ({ price: +price.toFixed(price < 1 ? 6 : 2) }));
+}
+
+function buildFibonacci(candles: CandleData[], bias: Bias): AnalysisFibonacci {
+  const recent = candles.slice(-90);
+  const hi = Math.max(...recent.map((c) => c.high));
+  const lo = Math.min(...recent.map((c) => c.low));
+  const span = hi - lo || 1;
+  const direction: 'up' | 'down' = bias === 'SHORT' ? 'down' : 'up';
+  const ratios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
+  const dp = hi < 1 ? 6 : 2;
+  const levels: FibLevel[] = ratios.map((r) => {
+    // up = retracement from swing low toward high; down = from high toward low
+    const price = direction === 'up' ? hi - span * r : lo + span * r;
+    return { label: r === 0 ? '0' : r === 1 ? '1' : r.toFixed(3), ratio: r, price: +price.toFixed(dp) };
   });
+  return { direction, swingHigh: +hi.toFixed(dp), swingLow: +lo.toFixed(dp), levels };
+}
 
-  if (error) {
-    // Supabase surfaces non-2xx as an error; try to read the function's message.
-    let detail = '';
-    try {
-      // @ts-ignore - context is present on FunctionsHttpError
-      const res = error?.context;
-      if (res && typeof res.json === 'function') {
-        const body = await res.json();
-        detail = body?.error || body?.message || '';
-      }
-    } catch { /* ignore */ }
+/**
+ * Runs the full engine on live candles for a pair and returns a ChartAnalysis
+ * (bias, strategies, S/R, Fibonacci, and the best detected trade with entry/SL/TP).
+ */
+export async function analyzePairLive(
+  pairInput: string,
+  timeframeInput: string,
+  ctx: AnalyzeContext = {},
+): Promise<ChartAnalysis> {
+  const symbol = symbolFromPair(pairInput);
+  const tf = /^(1m|5m|15m|1h|4h|1d)$/.test(timeframeInput) ? timeframeInput : '1h';
+  const candles = await fetchKlines(symbol, tf, 200);
 
+  if (candles.length < 60) {
     throw new Error(
-      detail ||
-        'AI analysis is not available yet. Deploy the "analyze-chart" edge function and set a vision API key (OPENAI_API_KEY or GEMINI_API_KEY) in your Supabase project. See SETUP_AI_CHART_ANALYSIS.md.',
+      `Couldn't pull enough live candles for "${pairInput.toUpperCase()}". Check the symbol (try e.g. BTC/USDT, ETH/USDT, SOL/USDT).`,
     );
   }
 
-  if (!data || (data as any).error) {
-    throw new Error((data as any)?.error || 'The analyzer returned no result. Please try another screenshot.');
+  const last = candles[candles.length - 1].close;
+  const results = evaluateAllStrategies(candles);
+  const triggered = results.filter((r) => r.triggered && r.direction);
+  const longs = triggered.filter((r) => r.direction === 'LONG').length;
+  const shorts = triggered.filter((r) => r.direction === 'SHORT').length;
+  const bias: Bias = longs > shorts ? 'LONG' : shorts > longs ? 'SHORT' : 'NEUTRAL';
+
+  // Best trade: prefer a triggered strategy aligned with the net bias.
+  const primary =
+    triggered.find((r) => bias !== 'NEUTRAL' && r.direction === bias) ?? triggered[0] ?? null;
+
+  const target: ScanTarget = { symbol, pair: pairInput.toUpperCase(), interval: tf, isScalp: tf === '5m' };
+  const signal = primary
+    ? buildSignalFromStrategyHit(
+        target,
+        candles,
+        { name: primary.name, direction: primary.direction!, reason: primary.reason },
+        triggered.filter((r) => r.direction === primary.direction).map((r) => r.name),
+      )
+    : null;
+
+  const { highs, lows } = findPivots(candles);
+  const resistanceLevels = pickLevels(highs.length ? highs : candles.map((c) => c.high), last, 'above');
+  const supportLevels = pickLevels(lows.length ? lows : candles.map((c) => c.low), last, 'below');
+  const fibonacci = buildFibonacci(candles, bias);
+
+  const strategies: StrategyFinding[] = results
+    .filter((r) => r.triggered)
+    .slice(0, 10)
+    .map((r) => ({ name: r.name, applied: true, note: r.reason.slice(0, 200) }));
+  if (strategies.length === 0) {
+    strategies.push({ name: 'No strategy firing', applied: false, note: 'Market is between clean setups on this timeframe right now.' });
   }
 
-  return normalise((data as any).analysis ?? data, ctx);
+  const detectedTrade: DetectedTrade = signal
+    ? {
+        direction: signal.type,
+        entry: signal.entryPrice,
+        stopLoss: signal.stopLoss,
+        targets: [signal.target1, signal.target2, signal.target3]
+          .filter((p): p is number => typeof p === 'number' && p > 0)
+          .map((price) => ({ price })),
+        rationale: signal.rationale || primary?.reason,
+      }
+    : { direction: 'NONE', targets: [] };
+
+  const confidence = signal?.confidenceScore ?? (bias === 'NEUTRAL' ? 35 : 50 + Math.min(30, triggered.length * 6));
+
+  const dp = last < 1 ? 6 : 2;
+  const summaryParts: string[] = [];
+  summaryParts.push(
+    `LIVE technical read of ${pairInput.toUpperCase()} on the ${tf} timeframe (last price ${formatPrice(last)}).`,
+  );
+  summaryParts.push(
+    `Vision image-reading isn't enabled, so this is a real market analysis from live Binance futures candles across all 21 strategies — not a read of the uploaded picture.`,
+  );
+  summaryParts.push(
+    bias === 'NEUTRAL'
+      ? `Net bias is NEUTRAL: ${longs} bullish vs ${shorts} bearish strategy triggers — no strong edge right now.`
+      : `Net bias is ${bias} — ${bias === 'LONG' ? longs : shorts} of ${triggered.length} firing strategies agree.`,
+  );
+  if (signal) {
+    summaryParts.push(
+      `Best trade: ${signal.type} via ${signal.strategy}${signal.demandSupplyZone ? ` (${signal.demandSupplyZone})` : ''} — entry ${formatPrice(signal.entryPrice)}, stop ${formatPrice(signal.stopLoss)}, first target ${formatPrice(signal.target1)}. Conviction ${signal.confidenceScore}/100.`,
+    );
+  } else {
+    summaryParts.push('No clean entry is triggering right now — treat this as observation, not a trade.');
+  }
+
+  return {
+    pair: (ctx.pair || pairInput).toUpperCase().slice(0, 24),
+    timeframe: tf,
+    bias,
+    confidence: Math.min(100, Math.max(0, Math.round(confidence))),
+    summary: summaryParts.join(' '),
+    priceContext: {
+      lastPrice: +last.toFixed(dp),
+      high: +Math.max(...candles.slice(-90).map((c) => c.high)).toFixed(dp),
+      low: +Math.min(...candles.slice(-90).map((c) => c.low)).toFixed(dp),
+    },
+    strategies,
+    supportLevels,
+    resistanceLevels,
+    fibonacci,
+    detectedTrade,
+    disclaimer:
+      'Live 21-strategy technical read from real Binance futures data. Educational only — not financial advice.',
+  };
 }
 
 // ---------------------------------------------------------------------------

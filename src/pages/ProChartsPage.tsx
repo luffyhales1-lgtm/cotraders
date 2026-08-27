@@ -34,7 +34,7 @@ const ProChartsPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16 md:pb-0">
       <AmbientBackground />
       <TickerTape />
       <Navbar />
@@ -43,23 +43,23 @@ const ProChartsPage: React.FC = () => {
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2">
-              <LineChart className="h-7 w-7 text-indigo-400" />
-              Pro Dark Trading Terminal
+            <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
+              <LineChart className="h-7 w-7 text-indigo-600" />
+              Pro Trading Terminal
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <p className="text-sm text-slate-500 mt-1">
               Binance WebSocket Klines, Real-Time Depth Orderbook, and Technical Overlays.
             </p>
           </div>
 
           {isVipMember && (
             <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search symbol (e.g. BTC, XAU, SOL)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-slate-900 border-slate-800 text-xs font-mono text-slate-100 focus:border-indigo-500"
+                className="pl-9 bg-white border-slate-200 text-xs font-mono text-slate-900 focus:border-indigo-500"
               />
             </div>
           )}
@@ -79,7 +79,7 @@ const ProChartsPage: React.FC = () => {
                   onClick={() => setSelectedCoin(coin)}
                   variant={selectedCoin?.symbol === coin.symbol ? 'secondary' : 'outline'}
                   size="sm"
-                  className={`shrink-0 font-mono text-xs ${selectedCoin?.symbol === coin.symbol ? 'bg-indigo-600 text-white border-indigo-500 font-bold' : 'border-slate-800 text-slate-300 hover:bg-slate-900'}`}
+                  className={`shrink-0 font-mono text-xs ${selectedCoin?.symbol === coin.symbol ? 'bg-indigo-600 text-white border-indigo-500 font-bold' : 'border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                 >
                   {coin.pair}
                 </Button>

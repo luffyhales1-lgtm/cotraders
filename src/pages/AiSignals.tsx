@@ -23,7 +23,7 @@ const GOLDEN_MIN_CONFIDENCE = 80;
 const AUTO_EXEC_KEY = 'cotraders_auto_paper_exec_v1';
 
 const AiSignals: React.FC = () => {
-  const { isVipMember, dispatchTelegramSignal } = useAuth();
+  const { user, isVipMember, dispatchTelegramSignal } = useAuth();
   const [signals, setSignals] = useState<Signal[]>([]);
   const [filterType, setFilterType] = useState<string>('ALL');
   const [loading, setLoading] = useState<boolean>(false);
@@ -55,7 +55,7 @@ const AiSignals: React.FC = () => {
       // NOT place real exchange orders or store secret API keys in the browser —
       // it auto-tracks the setups risk-free instead.
       try {
-        if (localStorage.getItem(AUTO_EXEC_KEY) === '1') {
+        if (user?.isAdmin && localStorage.getItem(AUTO_EXEC_KEY) === '1') {
           const golden = live.filter(s => (s.confidenceScore ?? 0) >= GOLDEN_MIN_CONFIDENCE);
           let added = 0;
           for (const s of golden) {
@@ -124,7 +124,7 @@ const AiSignals: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16 md:pb-0">
       <AmbientBackground />
       <TickerTape />
       <Navbar />
@@ -139,23 +139,23 @@ const AiSignals: React.FC = () => {
               <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/40 font-bold">
                 <Zap className="h-3.5 w-3.5 mr-1" /> 1-MIN AUTOMATED DISPATCH
               </Badge>
-              <Badge variant="outline" className="text-slate-400 border-slate-800 font-mono">
+              <Badge variant="outline" className="text-slate-500 border-slate-200 font-mono">
                 1000+ Pairs & Gold
               </Badge>
             </div>
-            <h1 className="text-3xl font-black text-slate-100 mt-2 text-shimmer">Live AI Trading Signals & Telegram Redirect</h1>
-            <p className="text-sm text-slate-400 mt-1">
+            <h1 className="text-3xl font-black text-slate-900 mt-2 text-shimmer">Live AI Trading Signals & Telegram Redirect</h1>
+            <p className="text-sm text-slate-500 mt-1">
               Multi-indicator algorithms evaluating SMC Order Blocks, EMA Crossovers & RSI Divergence with 1-min auto Telegram dispatch.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
+            <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 gap-1">
               {['ALL', 'LONG', 'SHORT', 'GOLD', 'GOLDEN'].map(t => (
                 <button
                   key={t}
                   onClick={() => setFilterType(t)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${filterType === t ? (t === 'GOLDEN' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-indigo-600 text-white shadow') : 'text-slate-400 hover:text-slate-200'}`}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${filterType === t ? (t === 'GOLDEN' ? 'bg-amber-500 text-slate-950 shadow' : 'bg-indigo-600 text-white shadow') : 'text-slate-500 hover:text-slate-900'}`}
                 >
                   {FILTER_LABELS[t]}
                   {t === 'GOLDEN' && goldenCount > 0 && (
@@ -175,16 +175,18 @@ const AiSignals: React.FC = () => {
               Scan Now
             </Button>
 
-            <Button
-              onClick={toggleAutoExec}
-              size="sm"
-              variant="outline"
-              title="Auto-log Golden signals to your paper journal on every scan (no real orders / no API keys)"
-              className={`font-bold gap-1.5 ${autoExec ? 'border-amber-500/60 bg-amber-500/10 text-amber-300' : 'border-slate-800 text-slate-300'}`}
-            >
-              <BookMarked className="h-4 w-4" />
-              Auto-Execute {autoExec ? 'ON' : 'OFF'}
-            </Button>
+            {user?.isAdmin && (
+              <Button
+                onClick={toggleAutoExec}
+                size="sm"
+                variant="outline"
+                title="Admin only — auto-log Golden signals to the paper journal on every scan (no real orders / no API keys)"
+                className={`font-bold gap-1.5 ${autoExec ? 'border-amber-500/60 bg-amber-500/10 text-amber-600' : 'border-slate-200 text-slate-700'}`}
+              >
+                <BookMarked className="h-4 w-4" />
+                Auto-Execute {autoExec ? 'ON' : 'OFF'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -203,7 +205,7 @@ const AiSignals: React.FC = () => {
             />
 
             <div className="mt-8">
-              <h3 className="text-lg font-bold text-slate-300 mb-4">Sample Signal Preview</h3>
+              <h3 className="text-lg font-bold text-slate-700 mb-4">Sample Signal Preview</h3>
               <div className="max-w-md">
                 {signals.slice(0, 1).map(sig => (
                   <SignalCard key={sig.id} signal={{ ...sig, isVipOnly: false }} />
@@ -216,11 +218,11 @@ const AiSignals: React.FC = () => {
             <CustomScannerSandbox />
 
             {filterType === 'GOLDEN' && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border border-amber-500/40 flex items-center gap-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-100/70 via-white to-white border border-amber-500/40 flex items-center gap-3">
                 <span className="text-2xl">🏆</span>
                 <div>
-                  <p className="text-sm font-black text-amber-300">Golden Signals — highest-conviction only</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-sm font-black text-amber-600">Golden Signals — highest-conviction only</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Curated to setups scoring ≥ {GOLDEN_MIN_CONFIDENCE}/100 on the engine's composite conviction (real backtested win rate + multi-strategy confluence + momentum + RSI-divergence confirmation). {goldenCount} live right now.
                   </p>
                 </div>
@@ -229,8 +231,8 @@ const AiSignals: React.FC = () => {
 
             {filtered.length === 0 ? (
               <div className="text-center py-16 rounded-2xl glass-panel">
-                <Zap className="h-10 w-10 text-slate-700 mx-auto mb-3" />
-                <p className="text-sm text-slate-400">
+                <Zap className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-sm text-slate-500">
                   {filterType === 'GOLDEN'
                     ? `No setups currently clear the ${GOLDEN_MIN_CONFIDENCE}+ conviction bar. Golden signals are intentionally rare — check back after the next scan.`
                     : 'No signals match this filter right now. The engine only emits a signal when a strategy actually triggers on real candles.'}

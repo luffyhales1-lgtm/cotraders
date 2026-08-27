@@ -102,20 +102,20 @@ const BotSettings: React.FC = () => {
 
   if (!isVipMember) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16 md:pb-0">
         <AmbientBackground />
         <TickerTape />
         <Navbar />
         <main className="relative z-10 max-w-3xl mx-auto px-4 lg:px-8 py-8">
           {!user ? (
             <div className="p-4 mb-6 rounded-2xl glass-panel text-center">
-              <Link to="/login" className="text-indigo-400 hover:text-indigo-300">
+              <Link to="/login" className="text-indigo-600 hover:text-indigo-500">
                 Login to access bot settings
               </Link>
             </div>
           ) : (
             <div className="flex items-center justify-between p-4 mb-6 rounded-2xl glass-panel">
-              <span className="text-slate-400">{user.email}</span>
+              <span className="text-slate-500">{user.email}</span>
               <Button onClick={logout} variant="ghost" size="icon" title="Logout">
                 <LogOut className="h-5 w-5" />
               </Button>
@@ -132,50 +132,50 @@ const BotSettings: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 md:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-16 md:pb-0">
       <AmbientBackground />
       <TickerTape />
       <Navbar />
       <main className="relative z-10 max-w-3xl mx-auto px-4 lg:px-8 py-8">
       <div className="flex items-center justify-between p-4 mb-6 rounded-2xl glass-panel">
-        <span className="text-slate-400">{user.email}</span>
+        <span className="text-slate-500">{user.email}</span>
         <Button onClick={logout} variant="ghost" size="icon" title="Logout">
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
       <div className="p-6 rounded-2xl glass-panel">
         <CardHeader>
-          <CardTitle className="text-lg font-bold flex items-center gap-3 text-indigo-400">
+          <CardTitle className="text-lg font-bold flex items-center gap-3 text-indigo-600">
             <Settings className="h-6 w-6" />
             My Bot Settings
           </CardTitle>
-          <Badge variant="outline" className="text-slate-400 border-slate-800 text-[10px]">
+          <Badge variant="outline" className="text-slate-500 border-slate-200 text-[10px]">
             VIP Exclusive
           </Badge>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveConfig} className="space-y-6">
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Bot Token</label>
+              <label className="text-xs font-bold text-slate-600 block mb-2">Telegram Bot Token</label>
               <Input
                 type="password"
                 placeholder="123456789:ABCdefGHI..."
                 value={botToken}
                 onChange={(e) => setBotToken(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+                className="bg-white border-slate-200 text-slate-900 text-xs font-mono"
                 required
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-300 block mb-2">Telegram Chat / Channel ID</label>
+              <label className="text-xs font-bold text-slate-600 block mb-2">Telegram Chat / Channel ID</label>
               <Input
                 type="text"
                 placeholder="-100123456789"
                 value={chatId}
                 onChange={(e) => setChatId(e.target.value)}
-                className="bg-slate-950 border-slate-800 text-slate-100 text-xs font-mono"
+                className="bg-white border-slate-200 text-slate-900 text-xs font-mono"
                 required
                 disabled={loading}
               />
@@ -186,10 +186,10 @@ const BotSettings: React.FC = () => {
                 type="checkbox"
                 checked={autoScanEnabled}
                 onChange={(e) => setAutoScanEnabled(e.target.checked)}
-                className="h-5 w-5 text-indigo-600 bg-slate-950 border-slate-800 rounded"
+                className="h-5 w-5 text-indigo-600 bg-white border-slate-300 rounded"
                 disabled={loading}
               />
-              <span className="ml-2.5 text-slate-100 text-xs">
+              <span className="ml-2.5 text-slate-700 text-xs">
                 Enable Auto Scan (Receive automated trading signals)
               </span>
             </div>
@@ -207,19 +207,19 @@ const BotSettings: React.FC = () => {
 
       {/* Current Status */}
       <div className="mt-6 p-4 rounded-2xl glass-panel">
-        <h3 className="font-bold text-lg text-slate-100 mb-4">Current Status</h3>
+        <h3 className="font-bold text-lg text-slate-900 mb-4">Current Status</h3>
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-slate-400">
+          <div className="flex items-center justify-between text-slate-600">
             <span>Bot Token:</span>
             <span className="font-mono">{botToken ? botToken.substring(0, 10) + '...' : 'Not set'}</span>
           </div>
-          <div className="flex items-center justify-between text-slate-400">
+          <div className="flex items-center justify-between text-slate-600">
             <span>Chat ID:</span>
             <span className="font-mono">{chatId ? chatId : 'Not set'}</span>
           </div>
-          <div className="flex items-center justify-between text-slate-400">
+          <div className="flex items-center justify-between text-slate-600">
             <span>Auto Scan:</span>
-            <span className={autoScanEnabled ? 'text-emerald-400' : 'text-slate-400'}>
+            <span className={autoScanEnabled ? 'text-emerald-600' : 'text-slate-500'}>
               {autoScanEnabled ? 'Enabled' : 'Disabled'}
             </span>
           </div>
@@ -228,14 +228,14 @@ const BotSettings: React.FC = () => {
 
       {/* Help Section */}
       <div className="mt-6 p-4 rounded-2xl glass-panel">
-        <h3 className="font-bold text-lg text-slate-100 mb-4">How to Get Your Telegram Bot Token and Chat ID</h3>
-        <ol className="list-decimal list-inside space-y-2 text-slate-400">
+        <h3 className="font-bold text-lg text-slate-900 mb-4">How to Get Your Telegram Bot Token and Chat ID</h3>
+        <ol className="list-decimal list-inside space-y-2 text-slate-600">
           <li>Talk to @BotFather on Telegram to create a new bot and get your token</li>
           <li>Start a chat with your bot and send any message</li>
           <li>Get your chat ID by visiting: {'https://api.telegram.org/bot<your_token>/getUpdates'}</li>
           <li>Look for {'"chat":{"id":<your_chat_id>}'} in the response</li>
         </ol>
-        <p className="mt-3 text-slate-400">
+        <p className="mt-3 text-slate-600">
           <strong>Note:</strong> Your bot must be started (send /start to it) before it can receive messages.
         </p>
       </div>

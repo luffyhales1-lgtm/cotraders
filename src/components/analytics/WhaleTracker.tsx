@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { fetchWhaleTrackerData, WhaleEvent, WhaleTrackerError } from '@/services/whaleTrackerApi';
 
-const REFRESH_INTERVAL_MS = 45 * 1000;
+const REFRESH_INTERVAL_MS = 15 * 1000; // re-snapshot the live buffer every 15s
 
 function timeAgo(unixSeconds: number): string {
   const diffMs = Date.now() - unixSeconds * 1000;
@@ -47,7 +47,6 @@ export const WhaleTracker: React.FC = () => {
     try {
       const result = await fetchWhaleTrackerData();
       setEvents(result.events);
-      // keep only sources that actually reported an error (values are null when healthy)
       const activeErrors: Record<string, string> = {};
       Object.entries(result.sourceErrors || {}).forEach(([k, v]) => {
         if (v) activeErrors[k] = v;
@@ -77,19 +76,19 @@ export const WhaleTracker: React.FC = () => {
     return (
       <div className="p-6 rounded-3xl glass-panel">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-amber-400">
+          <CardTitle className="text-lg font-bold flex items-center gap-2 text-amber-600">
             <ShieldCheck className="h-5 w-5" />
             Whale Tracker
           </CardTitle>
-          <Badge variant="outline" className="text-slate-400 border-slate-800 text-[10px]">
+          <Badge variant="outline" className="text-slate-500 border-slate-300 text-[10px]">
             VIP ONLY
           </Badge>
         </CardHeader>
         <CardContent className="text-center py-8">
-          <p className="text-sm text-slate-400">
-            Upgrade to VIP to access real-time whale transaction tracking — live $50k+ fills straight from the Hyperliquid perp DEX.
+          <p className="text-sm text-slate-500">
+            Upgrade to VIP to access real-time whale transaction tracking — live $15k+ fills straight from the Hyperliquid perp DEX.
           </p>
-          <Button onClick={() => window.location.href = '/pricing'} className="mt-4 w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs gap-1">
+          <Button onClick={() => window.location.href = '/pricing'} className="mt-4 w-full bg-amber-500 hover:bg-amber-400 text-white font-black text-xs gap-1">
             Upgrade to VIP
           </Button>
         </CardContent>
@@ -101,16 +100,20 @@ export const WhaleTracker: React.FC = () => {
     <div className="p-6 rounded-3xl glass-panel">
       <CardHeader className="pb-2 flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-purple-400">
+          <CardTitle className="text-lg font-bold flex items-center gap-2 text-indigo-600">
             <Activity className="h-5 w-5" />
             Whale Tracker
           </CardTitle>
           <div className="flex items-center gap-2 mt-1">
-            <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/40 text-[10px]">
+            <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[10px] gap-1">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+              </span>
               LIVE · HYPERLIQUID
             </Badge>
             {lastUpdated && (
-              <span className="text-[10px] text-slate-500">Updated {timeAgo(Math.floor(lastUpdated / 1000))}</span>
+              <span className="text-[10px] text-slate-400">Updated {timeAgo(Math.floor(lastUpdated / 1000))}</span>
             )}
           </div>
         </div>
@@ -119,7 +122,7 @@ export const WhaleTracker: React.FC = () => {
           variant="outline"
           onClick={() => loadWhaleData(true)}
           disabled={loading}
-          className="border-slate-800 text-slate-400 hover:text-slate-100 gap-1"
+          className="border-slate-300 text-slate-500 hover:text-slate-900 gap-1"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
         </Button>
@@ -129,27 +132,27 @@ export const WhaleTracker: React.FC = () => {
         {loading && events.length === 0 ? (
           <div className="text-center py-8">
             <div className="flex items-center justify-center gap-3">
-              <div className="h-8 w-8 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center">
-                <Zap className="h-4 w-4 text-purple-400 animate-spin" />
+              <div className="h-8 w-8 rounded-lg bg-indigo-100 border border-indigo-200 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-indigo-600 animate-spin" />
               </div>
-              <span className="text-sm text-slate-400">Loading whale transactions...</span>
+              <span className="text-sm text-slate-500">Connecting to the live whale feed…</span>
             </div>
           </div>
         ) : error && events.length === 0 ? (
           <div className="text-center py-8 space-y-3">
-            <AlertTriangle className="h-6 w-6 text-amber-400 mx-auto" />
-            <p className="text-sm text-slate-300 max-w-sm mx-auto">{error}</p>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto" />
+            <p className="text-sm text-slate-700 max-w-sm mx-auto">{error}</p>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
               This live feed streams free from the Hyperliquid public API. If it stalls, it's usually a temporary network/WebSocket hiccup — retry in a moment.
             </p>
-            <Button size="sm" onClick={() => loadWhaleData(true)} className="bg-purple-600 hover:bg-purple-500">
+            <Button size="sm" onClick={() => loadWhaleData(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white">
               Try again
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
             {Object.keys(sourceErrors).length > 0 && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                 <span>
                   Some data sources are unavailable: {Object.entries(sourceErrors).map(([k, v]) => `${k} (${v})`).join(', ')}
@@ -158,40 +161,40 @@ export const WhaleTracker: React.FC = () => {
             )}
 
             {events.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">No whale activity above threshold in the current window.</p>
+              <p className="text-sm text-slate-400 text-center py-8">Waiting for the next $15k+ whale fill on the live feed…</p>
             ) : (
               events.map((tx) => (
-                <div key={tx.id} className="p-4 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                <div key={tx.id} className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`h-10 w-10 rounded-lg shrink-0 flex items-center justify-center ${
-                      tx.action === 'BUY' ? 'bg-emerald-500/20' : tx.action === 'SELL' ? 'bg-rose-500/20' : 'bg-slate-700/40'
+                      tx.action === 'BUY' ? 'bg-emerald-100' : tx.action === 'SELL' ? 'bg-rose-100' : 'bg-slate-200'
                     }`}>
-                      {tx.action === 'BUY' ? <TrendingUp className="h-5 w-5 text-emerald-400" /> :
-                       tx.action === 'SELL' ? <TrendingDown className="h-5 w-5 text-rose-400" /> :
-                       <ArrowRightLeft className="h-5 w-5 text-slate-300" />}
+                      {tx.action === 'BUY' ? <TrendingUp className="h-5 w-5 text-emerald-600" /> :
+                       tx.action === 'SELL' ? <TrendingDown className="h-5 w-5 text-rose-600" /> :
+                       <ArrowRightLeft className="h-5 w-5 text-slate-500" />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-slate-100 truncate">{tx.asset} · {tx.detail}</h4>
-                      <p className="text-xs text-slate-400 flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-slate-500" /> {timeAgo(tx.timestamp)}
+                      <h4 className="font-semibold text-slate-900 truncate">{tx.asset} · {tx.detail}</h4>
+                      <p className="text-xs text-slate-500 flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-slate-400" /> {timeAgo(tx.timestamp)}
                       </p>
-                      <p className="text-xs text-slate-400 truncate">
+                      <p className="text-xs text-slate-500 truncate">
                         <span className="font-mono">{tx.wallet}</span>
                       </p>
                     </div>
                   </div>
                   <div className="text-right space-y-1 shrink-0">
-                    <p className="font-bold text-slate-100">{formatUsd(tx.usdValue)}</p>
+                    <p className="font-bold text-slate-900">{formatUsd(tx.usdValue)}</p>
                     {tx.amount !== null && (
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-500">
                         {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.asset}
                         {tx.price !== null && ` @ $${tx.price.toLocaleString()}`}
                       </p>
                     )}
                     <Badge className={
-                      tx.action === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' :
-                      tx.action === 'SELL' ? 'bg-rose-500/20 text-rose-400' :
-                      'bg-slate-700/40 text-slate-300'
+                      tx.action === 'BUY' ? 'bg-emerald-100 text-emerald-700' :
+                      tx.action === 'SELL' ? 'bg-rose-100 text-rose-700' :
+                      'bg-slate-200 text-slate-600'
                     }>
                       {tx.action}
                     </Badge>

@@ -76,7 +76,7 @@ const NewsPage: React.FC = () => {
   const hiddenCount = news.length - visibleNews.length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       <AmbientBackground />
       <TickerTape />
       <Navbar />
@@ -86,21 +86,21 @@ const NewsPage: React.FC = () => {
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 animate-fade-up">
           <div>
-            <h1 className="text-3xl font-black text-slate-100 flex items-center gap-2 text-shimmer">
-              <Newspaper className="h-7 w-7 text-rose-400" />
-              Institutional Intelligence & Market News
+            <h1 className="text-3xl font-black text-slate-900 flex items-center gap-2">
+              <Newspaper className="h-7 w-7 text-rose-500" />
+              Institutional Intelligence &amp; Market News
             </h1>
-            <p className="text-sm text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+            <p className="text-sm text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
                 LIVE
               </span>
-              Aggregated from CoinDesk, Cointelegraph, Reuters &amp; more · auto-refreshes every 2 min
+              Aggregated from CoinDesk, Cointelegraph, Decrypt &amp; more · auto-refreshes every 2 min
               {lastUpdated && (
-                <span className="text-slate-500 font-mono">· updated {relativeTime(lastUpdated)}</span>
+                <span className="text-slate-400 font-mono">· updated {relativeTime(lastUpdated)}</span>
               )}
             </p>
           </div>
@@ -108,7 +108,7 @@ const NewsPage: React.FC = () => {
           <Button
             onClick={() => loadNews(true)}
             disabled={refreshing}
-            className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-slate-950 font-black gap-2 rounded-xl shrink-0"
+            className="bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white font-black gap-2 rounded-xl shrink-0"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? 'Refreshing…' : 'Refresh Now'}
@@ -118,20 +118,20 @@ const NewsPage: React.FC = () => {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 animate-pulse">
-                <div className="h-3 w-32 bg-slate-800 rounded mb-4" />
-                <div className="h-5 w-full bg-slate-800 rounded mb-2" />
-                <div className="h-5 w-2/3 bg-slate-800 rounded mb-4" />
-                <div className="h-3 w-full bg-slate-800/70 rounded mb-1.5" />
-                <div className="h-3 w-5/6 bg-slate-800/70 rounded" />
+              <div key={i} className="p-6 rounded-2xl bg-white border border-slate-200 animate-pulse">
+                <div className="h-3 w-32 bg-slate-200 rounded mb-4" />
+                <div className="h-5 w-full bg-slate-200 rounded mb-2" />
+                <div className="h-5 w-2/3 bg-slate-200 rounded mb-4" />
+                <div className="h-3 w-full bg-slate-200/70 rounded mb-1.5" />
+                <div className="h-3 w-5/6 bg-slate-200/70 rounded" />
               </div>
             ))}
           </div>
         ) : error ? (
           <div className="text-center py-16 rounded-2xl glass-panel">
-            <AlertTriangle className="h-10 w-10 text-amber-400 mx-auto mb-3" />
-            <p className="text-slate-200 font-bold">{error}</p>
-            <Button onClick={() => loadNews(true)} className="mt-4 bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-bold gap-2">
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+            <p className="text-slate-800 font-bold">{error}</p>
+            <Button onClick={() => loadNews(true)} className="mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold gap-2">
               <RefreshCw className="h-4 w-4" /> Try Again
             </Button>
           </div>
@@ -144,16 +144,16 @@ const NewsPage: React.FC = () => {
             </div>
 
             {!isVipMember && hiddenCount > 0 && (
-              <div className="mt-6 p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-slate-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="mt-6 p-6 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-50 to-white flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <Lock className="h-6 w-6 text-amber-400 shrink-0" />
+                  <Lock className="h-6 w-6 text-amber-500 shrink-0" />
                   <div>
-                    <p className="font-black text-slate-100">{hiddenCount} more live stories + VIP macro analysis</p>
-                    <p className="text-xs text-slate-400">Unlock the full real-time intelligence feed and institutional sentiment reads.</p>
+                    <p className="font-black text-slate-900">{hiddenCount} more live stories + VIP macro analysis</p>
+                    <p className="text-xs text-slate-500">Unlock the full real-time intelligence feed and institutional sentiment reads.</p>
                   </div>
                 </div>
                 <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
-                  <Button className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black gap-2">
+                  <Button className="bg-amber-500 hover:bg-amber-400 text-white font-black gap-2">
                     <Lock className="h-4 w-4" /> Unlock VIP Feed
                   </Button>
                 </a>
@@ -169,38 +169,38 @@ const NewsPage: React.FC = () => {
 const NewsCard: React.FC<{ item: MarketNews }> = ({ item }) => {
   const sentimentStyle =
     item.sentiment === 'BULLISH'
-      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+      ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/40'
       : item.sentiment === 'BEARISH'
-        ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
-        : 'bg-slate-800 text-slate-300 border-slate-700';
+        ? 'bg-rose-500/15 text-rose-600 border-rose-500/40'
+        : 'bg-slate-100 text-slate-600 border-slate-200';
   const SentimentIcon =
     item.sentiment === 'BULLISH' ? TrendingUp : item.sentiment === 'BEARISH' ? TrendingDown : Minus;
   const impactStyle =
     item.impact === 'HIGH'
-      ? 'border-rose-500/40 text-rose-300'
+      ? 'border-rose-500/40 text-rose-600'
       : item.impact === 'MEDIUM'
-        ? 'border-amber-500/40 text-amber-300'
-        : 'border-slate-700 text-slate-400';
+        ? 'border-amber-500/40 text-amber-600'
+        : 'border-slate-200 text-slate-500';
 
   const liveTime = item.publishedOn ? relativeTime(item.publishedOn) : item.time;
 
   return (
     <div className="p-6 rounded-2xl glass-panel glass-panel-interactive transition-colors flex flex-col justify-between card-3d">
       <div>
-        <div className="flex items-center justify-between text-xs text-slate-400 mb-2">
-          <span className="font-bold text-slate-200 truncate">{item.source}</span>
+        <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+          <span className="font-bold text-slate-800 truncate">{item.source}</span>
           <span className="flex items-center gap-1 shrink-0">
-            <Radio className="h-3 w-3 text-emerald-400" /> {liveTime}
+            <Radio className="h-3 w-3 text-emerald-600" /> {liveTime}
           </span>
         </div>
 
-        <h3 className="font-extrabold text-lg text-slate-100 leading-snug">{item.title}</h3>
-        <p className="text-sm text-slate-300 mt-2 leading-relaxed">{item.summary}</p>
+        <h3 className="font-extrabold text-lg text-slate-900 leading-snug">{item.title}</h3>
+        <p className="text-sm text-slate-600 mt-2 leading-relaxed">{item.summary}</p>
 
         {item.categories && item.categories.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
             {item.categories.map(c => (
-              <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-medium">
+              <span key={c} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">
                 {c}
               </span>
             ))}
@@ -208,7 +208,7 @@ const NewsCard: React.FC<{ item: MarketNews }> = ({ item }) => {
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
+      <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge className={`gap-1 ${sentimentStyle}`}>
             <SentimentIcon className="h-3 w-3" /> {item.sentiment}
@@ -220,7 +220,7 @@ const NewsCard: React.FC<{ item: MarketNews }> = ({ item }) => {
 
         {item.url && (
           <a href={item.url} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="ghost" className="text-xs text-indigo-400 hover:text-indigo-300 gap-1">
+            <Button size="sm" variant="ghost" className="text-xs text-indigo-600 hover:text-indigo-500 gap-1">
               Read <ExternalLink className="h-3 w-3" />
             </Button>
           </a>

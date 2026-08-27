@@ -262,8 +262,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const dispatchTelegramSignal = async (signal: TelegramSignalPayload): Promise<boolean> => {
+    // Per-user bot gating. Signals only ever go to THIS user's own bot (the
+    // telegram_configs row is keyed by user_id), and only once they are a VIP
+    // who has actually configured it. There is no shared/global bot, and free
+    // users never trigger a dispatch.
+    if (!computeIsVip(user)) {
+      toast.error('Telegram signals are a VIP feature. Upgrade to VIP, then add your own bot in Bot Settings.');
+      return false;
+    }
     if (!telegramBotToken || !telegramChatId) {
-      toast.error('Please configure Telegram Bot Token and Chat ID in Admin Panel first!');
+      toast.error('Add your own Telegram Bot Token & Chat ID in Bot Settings first — signals dispatch only to your own bot.');
       return false;
     }
 

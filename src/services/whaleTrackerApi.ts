@@ -43,14 +43,20 @@ export class WhaleTrackerError extends Error {
 
 // --- Tunables -------------------------------------------------------------
 const HL_WS_URL = 'wss://api.hyperliquid.xyz/ws';
-// Hyperliquid gets thousands of small fills per minute, so a $10k floor would
-// bury real whales in noise. We surface genuinely large fills; tune here.
-const MIN_WHALE_USD = 50_000;
-const BUFFER_LIMIT = 60; // keep the most recent N whale fills
-// Most liquid Hyperliquid perps — the coins whales actually move size in.
+// Hyperliquid gets thousands of small fills per minute. $50k was too high and
+// left the feed looking sparse/stale ("not fully live"). $15k surfaces genuine
+// whale-sized fills far more frequently while still filtering retail noise.
+const MIN_WHALE_USD = 15_000;
+const BUFFER_LIMIT = 80; // keep the most recent N whale fills
+// If no frame of ANY kind arrives for this long the socket is considered stale
+// and force-reconnected, so a silently-dropped connection can't freeze the feed.
+const STALE_MS = 40_000;
+// Broadened watch list — the coins whales actually move size in on Hyperliquid.
 const WATCH_COINS = [
   'BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'DOGE', 'SUI', 'AVAX',
   'BNB', 'LINK', 'LTC', 'ARB', 'OP', 'WLD', 'PEPE', 'AAVE',
+  'TIA', 'SEI', 'INJ', 'TON', 'NEAR', 'APT', 'ADA', 'BCH',
+  'FARTCOIN', 'ENA', 'ONDO', 'JUP', 'WIF', 'kBONK',
 ];
 
 // --- Module-level singleton stream ---------------------------------------
@@ -62,6 +68,7 @@ const seenHashes = new Set<string>();
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 let firstDataResolvers: Array<() => void> = [];
+let lastFrameAt = 0; // ms timestamp of the last frame received (any channel)
 
 function shortWallet(addr?: string): string {
   if (!addr || addr.length < 12) return addr || 'unknown';
@@ -141,18 +148,26 @@ function ensureWhaleStream(): void {
   ws.onopen = () => {
     connecting = false;
     connectionError = null;
+    lastFrameAt = Date.now();
     if (ws) subscribeAll(ws);
     // Heartbeat: Hyperliquid supports { method: 'ping' } -> { channel: 'pong' }.
-    // Keeps the socket alive during quiet spells when no large fills stream in.
+    // Keeps the socket alive during quiet spells AND acts as a staleness
+    // watchdog: if no frame has arrived for STALE_MS the socket is silently
+    // dead, so we tear it down and reconnect to keep the feed genuinely live.
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
+        if (Date.now() - lastFrameAt > STALE_MS) {
+          try { ws.close(); } catch { /* ignore */ } // triggers onclose -> scheduleReconnect
+          return;
+        }
         try { ws.send(JSON.stringify({ method: 'ping' })); } catch { /* ignore */ }
       }
-    }, 30000);
+    }, 15000);
   };
 
   ws.onmessage = (ev) => {
+    lastFrameAt = Date.now();
     try {
       const msg = JSON.parse(ev.data);
       if (msg?.channel === 'trades' && Array.isArray(msg.data)) {

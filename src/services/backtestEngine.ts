@@ -18,6 +18,8 @@ export interface WalkForwardResult {
   totalLosses: number;
   overallWinRate: number | null;
   avgRMultiple: number | null;
+  /** Chronologically-ordered R multiple of every resolved trade (win = TP/SL R, loss = -1). Drives the equity curve. */
+  rSequence: number[];
 }
 
 /**
@@ -31,6 +33,7 @@ export function runWalkForwardBacktest(candles: CandleData[], maxBars = 180): Wa
   const atrSeries = atr(candles, 14);
   const start = Math.max(60, candles.length - maxBars);
   const statsMap = new Map<string, { trades: number; wins: number; losses: number; rSum: number }>();
+  const rSequence: number[] = []; // chronological R of every resolved trade (for the equity curve)
 
   for (let i = start; i < candles.length - 1; i++) {
     const windowCandles = candles.slice(0, i + 1);
@@ -61,8 +64,8 @@ export function runWalkForwardBacktest(candles: CandleData[], maxBars = 180): Wa
 
       const entry_stats = statsMap.get(r.name) ?? { trades: 0, wins: 0, losses: 0, rSum: 0 };
       entry_stats.trades += 1;
-      if (outcome === 'win') { entry_stats.wins += 1; entry_stats.rSum += TP1_ATR / SL_ATR; }
-      else { entry_stats.losses += 1; entry_stats.rSum -= 1; }
+      if (outcome === 'win') { entry_stats.wins += 1; entry_stats.rSum += TP1_ATR / SL_ATR; rSequence.push(+(TP1_ATR / SL_ATR).toFixed(3)); }
+      else { entry_stats.losses += 1; entry_stats.rSum -= 1; rSequence.push(-1); }
       statsMap.set(r.name, entry_stats);
     }
   }
@@ -87,5 +90,6 @@ export function runWalkForwardBacktest(candles: CandleData[], maxBars = 180): Wa
     totalLosses,
     overallWinRate: totalTrades >= MIN_TRADES_TO_REPORT ? +((totalWins / totalTrades) * 100).toFixed(1) : null,
     avgRMultiple: totalTrades > 0 ? +(rSum / totalTrades).toFixed(2) : null,
+    rSequence,
   };
 }

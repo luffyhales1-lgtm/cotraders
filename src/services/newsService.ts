@@ -20,6 +20,24 @@ import { supabase } from '@/integrations/supabase/client';
 const CRYPTOCOMPARE_NEWS_URL =
   'https://min-api.cryptocompare.com/data/v2/news/?lang=EN&sortOrder=latest';
 
+// Keyless, CORS-friendly RSS outlets read directly in the browser through a
+// public CORS proxy. This is the final live tier so the feed keeps working even
+// if the edge function isn't deployed AND CryptoCompare is region-blocked.
+const RSS_FEEDS: { url: string; source: string }[] = [
+  { url: 'https://cointelegraph.com/rss', source: 'Cointelegraph' },
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', source: 'CoinDesk' },
+  { url: 'https://decrypt.co/feed', source: 'Decrypt' },
+  { url: 'https://cryptoslate.com/feed/', source: 'CryptoSlate' },
+  { url: 'https://bitcoinmagazine.com/.rss/full/', source: 'Bitcoin Magazine' },
+];
+
+// Multiple proxies tried in order — if one is down/blocked the next is used.
+const CORS_PROXIES: ((u: string) => string)[] = [
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
+];
+
 interface RawArticle {
   id: string;
   title: string;
@@ -160,11 +178,74 @@ async function fetchFromCryptoCompare(): Promise<RawArticle[]> {
   }
 }
 
+/** Parse a raw RSS/XML string into our RawArticle shape. */
+function parseRssXml(xml: string, source: string): RawArticle[] {
+  try {
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const items = Array.from(doc.querySelectorAll('item, entry')).slice(0, 12);
+    return items
+      .map((item, idx) => {
+        const pick = (sel: string) => item.querySelector(sel)?.textContent?.trim() ?? '';
+        const title = pick('title');
+        // RSS uses <link>text</link>; Atom uses <link href="...">
+        let link = pick('link');
+        if (!link) link = item.querySelector('link')?.getAttribute('href') ?? '';
+        const descHtml = pick('description') || pick('summary') || pick('content');
+        const body = descHtml.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+        const pub = pick('pubDate') || pick('published') || pick('updated');
+        const cats = Array.from(item.querySelectorAll('category'))
+          .map((c) => (c.textContent?.trim() || c.getAttribute('term') || '').trim())
+          .filter(Boolean)
+          .slice(0, 4);
+        const ts = pub ? new Date(pub).getTime() : Date.now();
+        return {
+          id: `${source}-${idx}-${link || title}`,
+          title,
+          source,
+          url: link,
+          body,
+          publishedOn: isFinite(ts) ? ts : Date.now(),
+          categories: cats,
+        } as RawArticle;
+      })
+      .filter((a) => a.title && a.url);
+  } catch {
+    return [];
+  }
+}
+
+/** Source #3 — keyless crypto RSS outlets via a public CORS proxy. */
+async function fetchFromRss(): Promise<RawArticle[]> {
+  for (const proxy of CORS_PROXIES) {
+    const collected: RawArticle[] = [];
+    await Promise.all(
+      RSS_FEEDS.map(async (feed) => {
+        try {
+          const res = await fetch(proxy(feed.url));
+          if (!res.ok) return;
+          const text = await res.text();
+          // allorigins /get returns JSON {contents}; /raw + others return XML directly
+          let xml = text;
+          if (text.trimStart().startsWith('{')) {
+            try { xml = JSON.parse(text)?.contents ?? text; } catch { /* keep text */ }
+          }
+          collected.push(...parseRssXml(xml, feed.source));
+        } catch {
+          /* try next feed */
+        }
+      }),
+    );
+    if (collected.length > 0) return collected;
+  }
+  return [];
+}
+
 /**
  * Fetches the latest live market news, newest first. Tries the multi-source
- * aggregator first and transparently falls back to a direct CryptoCompare call,
- * so the page stays live even if the edge function isn't deployed yet. Throws
- * only if BOTH paths fail — the caller shows a real error state (never fake news).
+ * aggregator first, then a direct CryptoCompare call, then keyless crypto RSS
+ * outlets via a CORS proxy — so the page stays live even if the edge function
+ * isn't deployed and CryptoCompare is unreachable. Throws only if ALL paths
+ * fail — the caller shows a real error state (never fake news).
  */
 export async function fetchLiveNews(limit = 30): Promise<MarketNews[]> {
   let raw = await fetchFromEdge();
@@ -174,10 +255,23 @@ export async function fetchLiveNews(limit = 30): Promise<MarketNews[]> {
   }
 
   if (raw.length === 0) {
+    raw = await fetchFromRss();
+  }
+
+  if (raw.length === 0) {
     throw new Error('Live news feed is temporarily unreachable. Please refresh in a moment.');
   }
 
-  return normaliseRaw(raw)
+  // De-duplicate by title (different outlets syndicate the same story).
+  const seen = new Set<string>();
+  const deduped = raw.filter((a) => {
+    const key = a.title.toLowerCase().slice(0, 60);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return normaliseRaw(deduped)
     .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0))
     .slice(0, limit);
 }

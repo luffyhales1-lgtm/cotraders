@@ -35,11 +35,11 @@ export const TickerTape: React.FC = () => {
   if (tickers.length === 0) return null;
 
   return (
-    <div className="bg-slate-900/95 border-b border-slate-800/80 overflow-hidden py-1.5 px-2">
+    <div className="bg-white/90 border-b border-slate-200/80 overflow-hidden py-1.5 px-2">
       <div className="flex items-center gap-6 animate-marquee whitespace-nowrap scrollbar-none">
-        <div className="flex items-center gap-2 text-xs font-bold text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
-          <Flame className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
-          LIVE BINANCE & GOLD SPOT
+        <div className="flex items-center gap-2 text-xs font-bold text-amber-600 px-2 py-0.5 rounded bg-amber-100 border border-amber-200 shrink-0">
+          <Flame className="h-3.5 w-3.5 text-amber-600 animate-pulse" />
+          LIVE BINANCE FUTURES & GOLD
         </div>
 
         <div className="flex items-center gap-6">
@@ -47,11 +47,11 @@ export const TickerTape: React.FC = () => {
             const isPos = ticker.change24h >= 0;
             return (
               <div key={`${ticker.symbol}-${idx}`} className="flex items-center gap-2 text-xs font-mono shrink-0">
-                <span className="font-bold text-slate-200">{ticker.pair}</span>
-                <span className="font-semibold text-slate-100 transition-colors duration-300">
+                <span className="font-bold text-slate-800">{ticker.pair}</span>
+                <span className="font-semibold text-slate-900 transition-colors duration-300">
                   {ticker.isGold ? `$${ticker.price.toFixed(2)}` : `$${ticker.price < 1 ? ticker.price.toFixed(4) : ticker.price.toLocaleString()}`}
                 </span>
-                <span className={`flex items-center font-bold text-[11px] ${isPos ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <span className={`flex items-center font-bold text-[11px] ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {isPos ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                   {isPos ? '+' : ''}{ticker.change24h.toFixed(2)}%
                 </span>

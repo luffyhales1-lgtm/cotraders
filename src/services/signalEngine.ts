@@ -7,23 +7,12 @@ import { fetchKlines, fetchTopCryptos } from './binanceApi';
 
 export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
 
-// Fixed macro instruments that are always scanned regardless of the crypto
-// universe below: the forex majors. Binance does not list FX pairs, so these
-// stay synthetic (see binanceApi.ts SYNTHETIC_SYMBOLS). Gold (XAUUSDT) and
-// silver (XAGUSDT) are REAL Binance perpetuals now and are picked up
-// automatically by buildDynamicWatchlist() below along with every other real
-// pair -- they're intentionally not hardcoded here anymore.
-export const MACRO_SCAN_WATCHLIST: ScanTarget[] = [
-  { symbol: 'EURUSD', pair: 'EUR/USD (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'GBPUSD', pair: 'GBP/USD (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'USDJPY', pair: 'USD/JPY (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'AUDUSD', pair: 'AUD/USD (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'USDCAD', pair: 'USD/CAD (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'USDCHF', pair: 'USD/CHF (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'NZDUSD', pair: 'NZD/USD (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'EURJPY', pair: 'EUR/JPY (FOREX)', interval: '15m', isScalp: false },
-  { symbol: 'GBPJPY', pair: 'GBP/JPY (FOREX)', interval: '15m', isScalp: false },
-];
+// FUTURES ONLY. Binance lists no FX pairs, so synthetic forex majors are no
+// longer scanned — the entire universe is now real Binance USDT-M perpetual
+// futures (gold XAUUSDT and silver XAGUSDT are real perps and are picked up
+// automatically by buildDynamicWatchlist()). Kept as an empty export purely so
+// existing importers keep working.
+export const MACRO_SCAN_WATCHLIST: ScanTarget[] = [];
 
 // Used as a fallback (and as the default export for anything that still
 // imports DEFAULT_SCAN_WATCHLIST directly) before the dynamic top-volume
@@ -92,11 +81,12 @@ export async function buildDynamicWatchlist(topN = 500): Promise<ScanTarget[]> {
 
 // How many top-volume pairs are ALWAYS scanned every single cycle (the pairs
 // that matter most for signal quality), regardless of rotation.
-const CORE_ALWAYS_SCAN = 80;
+const CORE_ALWAYS_SCAN = 45;
 // How many additional rotating pairs we pull from the deeper universe each
-// cycle. CORE + ROTATING is the per-minute batch size -- bounded so a full
-// pass finishes inside the 60s window and stays under Binance rate limits.
-const ROTATING_BATCH = 140;
+// cycle. CORE + ROTATING is the per-minute batch size -- kept modest so a full
+// pass finishes quickly, stays under Binance rate limits, and doesn't pin the
+// browser main thread with strategy math.
+const ROTATING_BATCH = 80;
 let rotationCursor = 0;
 
 /**
@@ -143,21 +133,31 @@ export async function getScanBatch(): Promise<ScanTarget[]> {
 
 const SCAN_CONCURRENCY = 20;
 
-/**
- * Scans a watchlist against REAL candle data and REAL strategy math.
- * A signal only comes back for a symbol when one of the 21 strategies
- * actually triggered on the latest closed candle. If nothing triggers
- * anywhere, this correctly returns an empty array -- it will not invent a
- * signal just to have something to show.
- *
- * When called with no argument it pulls a rotating batch (getScanBatch) so
- * that over successive 1-minute cycles the whole ~500-pair universe + forex
- * + gold/silver is covered. Symbols are fetched with a concurrency pool so a
- * 200+ symbol batch still finishes well inside a 60-second scan cycle without
- * hammering the Binance API. Results come back sorted best-first (highest
- * confluence + win-probability), so the top signals surface immediately.
- */
+// Shared in-flight batch scan. Several timers can fire near-simultaneously
+// (the 60s auto-scanner, the 5-min AI Signals refresh, the dashboard loader).
+// Without this guard each would kick off its own full ~125-symbol scan and
+// pile strategy math onto the main thread, which is a major source of lag.
+// When a batch scan (no explicit watchlist) is already running, callers share
+// its promise instead of starting another.
+let batchScanInFlight: Promise<Signal[]> | null = null;
+
 export async function scanMarketForSignals(watchlist?: ScanTarget[]): Promise<Signal[]> {
+  if (!watchlist && batchScanInFlight) return batchScanInFlight;
+
+  const run = runScan(watchlist);
+
+  if (!watchlist) {
+    batchScanInFlight = run;
+    try {
+      return await run;
+    } finally {
+      batchScanInFlight = null;
+    }
+  }
+  return run;
+}
+
+async function runScan(watchlist?: ScanTarget[]): Promise<Signal[]> {
   const targets = watchlist ?? await getScanBatch();
   const signals: Signal[] = [];
 
