@@ -35,7 +35,7 @@ export const TickerTape: React.FC = () => {
   if (tickers.length === 0) return null;
 
   return (
-    <div className="bg-white/90 border-b border-slate-200/80 overflow-hidden py-1.5 px-2">
+    <div className="bg-[hsl(224_42%_7%/0.92)] border-b border-[hsl(222_25%_16%)] overflow-hidden py-1.5 px-2 backdrop-blur-md">
       <div className="flex items-center gap-6 animate-marquee whitespace-nowrap scrollbar-none">
         <div className="flex items-center gap-2 text-xs font-bold text-amber-600 px-2 py-0.5 rounded bg-amber-100 border border-amber-200 shrink-0">
           <Flame className="h-3.5 w-3.5 text-amber-600 animate-pulse" />
