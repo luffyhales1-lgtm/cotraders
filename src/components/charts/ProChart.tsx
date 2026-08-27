@@ -147,7 +147,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
     <div className="glass-panel rounded-3xl overflow-hidden shadow-xl">
 
       {/* Terminal Header Bar */}
-      <div className="bg-white p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-[hsl(224_42%_7%)] p-4 border-b border-[hsl(222_25%_16%)] flex flex-wrap items-center justify-between gap-4">
 
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl bg-indigo-500/15 border border-indigo-500/40 flex items-center justify-center">
@@ -225,7 +225,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
 
         {/* Pro Trading Chart View */}
-        <div className="lg:col-span-3 p-4 bg-rose-50/60 min-h-[420px] flex flex-col justify-between">
+        <div className="lg:col-span-3 p-4 bg-[hsl(224_44%_6%)] min-h-[420px] flex flex-col justify-between">
           {loading ? (
             <div className="h-[380px] flex items-center justify-center text-slate-500 gap-2 font-mono text-sm">
               <Zap className="h-5 w-5 text-indigo-500 animate-spin" /> Fetching live candlestick stream...
@@ -306,7 +306,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
         </div>
 
         {/* Live Orderbook & Stream */}
-        <div className="p-4 bg-white font-mono text-xs flex flex-col justify-between">
+        <div className="p-4 bg-[hsl(224_42%_7%)] font-mono text-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200 text-slate-500 text-[11px] font-sans font-bold">
               <span>ORDER BOOK</span>

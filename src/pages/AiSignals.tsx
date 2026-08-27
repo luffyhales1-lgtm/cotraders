@@ -200,18 +200,9 @@ const AiSignals: React.FC = () => {
         {!isVipMember ? (
           <div>
             <VIPGateModal
-              title="Full AI Signal Engine Restricted"
-              description="Free users can only view sample setups. Subscribe to VIP to view all live 5-minute signals and receive automated Telegram alerts."
+              title="AI Signal Engine — VIP Only"
+              description="Live AI signals are exclusive to VIP members. Subscribe to unlock every live 5-minute signal, Golden high-conviction setups and automated Telegram alerts."
             />
-
-            <div className="mt-8">
-              <h3 className="text-lg font-bold text-slate-700 mb-4">Sample Signal Preview</h3>
-              <div className="max-w-md">
-                {signals.slice(0, 1).map(sig => (
-                  <SignalCard key={sig.id} signal={{ ...sig, isVipOnly: false }} />
-                ))}
-              </div>
-            </div>
           </div>
         ) : (
           <div className="space-y-8">

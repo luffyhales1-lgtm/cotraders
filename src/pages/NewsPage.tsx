@@ -39,7 +39,7 @@ const NewsPage: React.FC = () => {
   const loadNews = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
-      const items = await fetchLiveNews(24);
+      const items = await fetchLiveNews(24, { force: isManual });
       if (!mounted.current) return;
       setNews(items);
       setLastUpdated(Date.now());

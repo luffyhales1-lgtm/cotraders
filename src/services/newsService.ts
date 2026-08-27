@@ -49,6 +49,31 @@ interface RawArticle {
   categories?: string[];
 }
 
+/** Resolve with a fallback value if the promise doesn't settle within `ms`. */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    const t = setTimeout(() => resolve(fallback), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }).catch(() => { clearTimeout(t); resolve(fallback); });
+  });
+}
+
+/** fetch() that actually aborts (frees the socket) after `ms`. */
+async function fetchWithTimeout(url: string, ms: number, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// Short-lived in-memory cache so re-opening the News page (or an auto-refresh
+// tick firing while a load is mid-flight) shows instantly instead of re-waiting
+// on the network. Refreshed transparently once stale.
+let newsCache: { data: MarketNews[]; at: number } | null = null;
+const NEWS_CACHE_TTL = 90 * 1000;
+
 interface CryptoCompareArticle {
   id: string;
   guid?: string;
@@ -167,7 +192,7 @@ async function fetchFromEdge(): Promise<RawArticle[]> {
 /** Source #2 — direct CryptoCompare (no backend needed). */
 async function fetchFromCryptoCompare(): Promise<RawArticle[]> {
   try {
-    const res = await fetch(CRYPTOCOMPARE_NEWS_URL, { headers: { accept: 'application/json' } });
+    const res = await fetchWithTimeout(CRYPTOCOMPARE_NEWS_URL, 4500, { headers: { accept: 'application/json' } });
     if (!res.ok) return [];
     const json = await res.json();
     const data: CryptoCompareArticle[] = json?.Data ?? [];
@@ -221,7 +246,7 @@ async function fetchFromRss(): Promise<RawArticle[]> {
     await Promise.all(
       RSS_FEEDS.map(async (feed) => {
         try {
-          const res = await fetch(proxy(feed.url));
+          const res = await fetchWithTimeout(proxy(feed.url), 4500);
           if (!res.ok) return;
           const text = await res.text();
           // allorigins /get returns JSON {contents}; /raw + others return XML directly
@@ -247,18 +272,25 @@ async function fetchFromRss(): Promise<RawArticle[]> {
  * isn't deployed and CryptoCompare is unreachable. Throws only if ALL paths
  * fail — the caller shows a real error state (never fake news).
  */
-export async function fetchLiveNews(limit = 30): Promise<MarketNews[]> {
-  let raw = await fetchFromEdge();
-
-  if (raw.length === 0) {
-    raw = await fetchFromCryptoCompare();
+export async function fetchLiveNews(limit = 30, opts?: { force?: boolean }): Promise<MarketNews[]> {
+  // Serve a warm cache instantly (unless the caller forces a hard refresh).
+  if (!opts?.force && newsCache && Date.now() - newsCache.at < NEWS_CACHE_TTL) {
+    return newsCache.data.slice(0, limit);
   }
 
-  if (raw.length === 0) {
-    raw = await fetchFromRss();
-  }
+  // Kick the two fastest sources off together so CryptoCompare is already
+  // in-flight by the time the edge function resolves/times out — no serial wait.
+  const edgeP = withTimeout(fetchFromEdge(), 3500, [] as RawArticle[]);
+  const ccP = withTimeout(fetchFromCryptoCompare(), 4500, [] as RawArticle[]);
+
+  let raw = await edgeP;
+  if (raw.length === 0) raw = await ccP;
+  // Last resort: keyless RSS via CORS proxy (bounded so it can't hang the page).
+  if (raw.length === 0) raw = await withTimeout(fetchFromRss(), 6000, [] as RawArticle[]);
 
   if (raw.length === 0) {
+    // If we have anything cached, prefer showing that over a hard error.
+    if (newsCache && newsCache.data.length > 0) return newsCache.data.slice(0, limit);
     throw new Error('Live news feed is temporarily unreachable. Please refresh in a moment.');
   }
 
@@ -271,7 +303,9 @@ export async function fetchLiveNews(limit = 30): Promise<MarketNews[]> {
     return true;
   });
 
-  return normaliseRaw(deduped)
-    .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0))
-    .slice(0, limit);
+  const result = normaliseRaw(deduped)
+    .sort((a, b) => (b.publishedOn ?? 0) - (a.publishedOn ?? 0));
+
+  newsCache = { data: result, at: Date.now() };
+  return result.slice(0, limit);
 }

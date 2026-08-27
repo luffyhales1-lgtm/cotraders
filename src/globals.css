@@ -87,6 +87,7 @@
   .bg-slate-50 { background-color: hsl(224 34% 7%) !important; }
   .bg-slate-100 { background-color: hsl(224 30% 13%) !important; }
   .bg-slate-200 { background-color: hsl(224 26% 17%) !important; }
+  .bg-slate-200\/70 { background-color: hsl(224 26% 17% / 0.7) !important; }
   .hover\:bg-slate-50:hover { background-color: hsl(224 32% 11%) !important; }
   .hover\:bg-slate-100:hover { background-color: hsl(224 28% 15%) !important; }
   .hover\:bg-slate-200:hover { background-color: hsl(224 26% 19%) !important; }
