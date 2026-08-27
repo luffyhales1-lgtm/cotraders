@@ -35,6 +35,84 @@ export interface TelegramSignalPayload {
   momentumStatus?: 'HIGH_MOMENTUM_CONTINUATION' | 'MOMENTUM_DEPLETING_SECURE_PROFIT' | 'NEUTRAL';
 }
 
+// Public CORS proxies used as a fallback when the browser can't reach
+// api.telegram.org directly (region block / network filter / rejected CORS
+// preflight). Same resilient pattern the news service uses.
+const TELEGRAM_CORS_PROXIES: ((u: string) => string)[] = [
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
+];
+
+/** fetch() that aborts after `ms` so a blocked call can't hang the UI. */
+async function fetchAbortable(url: string, ms: number, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/** Encode Telegram params into a GET query string (arrays/objects → JSON). */
+function toQuery(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null) continue;
+    q.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
+  }
+  return q.toString();
+}
+
+/**
+ * Resilient Telegram Bot API call. The common "Failed to fetch" comes from the
+ * browser being unable to open the request at all — a POST with a JSON body
+ * triggers a CORS preflight (OPTIONS) that some networks/regions drop, and
+ * api.telegram.org is outright blocked on many ISPs. So we try, in order:
+ *   1. Direct GET (a "simple" request — NO preflight, most likely to succeed).
+ *   2. Direct POST+JSON (works where CORS is fully allowed).
+ *   3. The same GET routed through public CORS proxies.
+ * Returns Telegram's parsed JSON, or throws a clear, user-facing error.
+ */
+async function callTelegramApi(
+  botToken: string,
+  method: string,
+  params: Record<string, unknown>,
+): Promise<any> {
+  const base = `https://api.telegram.org/bot${botToken}/${method}`;
+  const getUrl = `${base}?${toQuery(params)}`;
+
+  // 1) Direct GET — no preflight, so it clears the most common failure mode.
+  try {
+    const res = await fetchAbortable(getUrl, 12000);
+    return await res.json();
+  } catch { /* fall through */ }
+
+  // 2) Direct POST + JSON — for environments where full CORS is permitted.
+  try {
+    const res = await fetchAbortable(base, 12000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+    return await res.json();
+  } catch { /* fall through */ }
+
+  // 3) Proxy the GET — last resort when api.telegram.org is network-blocked.
+  for (const proxy of TELEGRAM_CORS_PROXIES) {
+    try {
+      const res = await fetchAbortable(proxy(getUrl), 12000);
+      const raw = await res.text();
+      try { return JSON.parse(raw); } catch { /* proxy returned non-JSON, try next */ }
+    } catch { /* try next proxy */ }
+  }
+
+  throw new Error(
+    'Could not reach Telegram. Your network or region may be blocking api.telegram.org — try another network/VPN, and double-check the bot token & chat ID in Bot Settings.',
+  );
+}
+
 function assetBadge(assetClass?: string): string {
   switch (assetClass) {
     case 'GOLD': return '🥇 GOLD';
@@ -122,28 +200,23 @@ ${signal.momentumNote ? `⚡ <b>Momentum:</b> <i>${signal.momentumNote}</i>` : '
   `.trim();
 
   try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: false,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '🔍 Run Live Scan', callback_data: 'menu_scanner' },
-              { text: '📊 Immediate Backtest Report', callback_data: 'menu_backtest' }
-            ]
+    const data = await callTelegramApi(botToken, 'sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: false,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            { text: '🔍 Run Live Scan', callback_data: 'menu_scanner' },
+            { text: '📊 Immediate Backtest Report', callback_data: 'menu_backtest' }
           ]
-        }
-      }),
+        ]
+      },
     });
-
-    const data = await res.json();
-    return data.ok ? { success: true, message: `Trade signal & S/R analysis for ${signal.pair} sent to Telegram!` } : { success: false, message: data.description };
+    return data.ok
+      ? { success: true, message: `Trade signal & S/R analysis for ${signal.pair} sent to Telegram!` }
+      : { success: false, message: data.description || 'Telegram rejected the message — check your bot token & chat ID.' };
   } catch (error: any) {
     return { success: false, message: error.message || 'Error connecting to Telegram API.' };
   }
@@ -196,15 +269,10 @@ ${guidance}
   `.trim();
 
   try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: text,
-        parse_mode: 'HTML'
-      }),
+    await callTelegramApi(botToken, 'sendMessage', {
+      chat_id: chatId,
+      text,
+      parse_mode: 'HTML',
     });
     return true;
   } catch (e) {
