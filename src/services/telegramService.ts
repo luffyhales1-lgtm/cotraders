@@ -129,6 +129,70 @@ function convictionBar(score?: number): string {
   return '🔥'.repeat(flames) + '▫️'.repeat(5 - flames);
 }
 
+/**
+ * Converts a Telegram {ok:false} response into a clear, actionable message.
+ * The overwhelmingly common cause after adding a NEW bot is that the saved
+ * Chat ID belonged to the OLD bot (chat IDs are per bot↔user conversation) or
+ * the user never pressed Start on the new bot — Telegram then answers
+ * "chat not found". We spell that out instead of a vague rejection.
+ */
+function explainTelegramError(data: any): string {
+  const code = data?.error_code;
+  const desc: string = data?.description || '';
+  const d = desc.toLowerCase();
+
+  if (d.includes('chat not found')) {
+    return 'Telegram: "chat not found". Your Chat ID doesn\'t match this bot. Open Telegram, search your NEW bot, press START (send it any message), then get your fresh Chat ID from https://api.telegram.org/bot<token>/getUpdates and paste it in Bot Settings. Note: each bot has its own Chat ID.';
+  }
+  if (d.includes('bot was blocked') || d.includes('user is deactivated')) {
+    return 'Telegram: you blocked this bot. Unblock it in Telegram and press START, then try again.';
+  }
+  if (d.includes('bots can\'t send messages to bots')) {
+    return 'Telegram: the Chat ID points at another bot. Use YOUR personal chat ID (or a channel/group ID where the bot is an admin).';
+  }
+  if (code === 401 || d.includes('unauthorized')) {
+    return 'Telegram: "unauthorized" — the Bot Token is wrong or was revoked. Copy the exact token from @BotFather (format 123456789:AA...) into Bot Settings.';
+  }
+  if (code === 400 && d.includes('not enough rights')) {
+    return 'Telegram: the bot lacks permission in that channel/group. Add the bot as an admin with "Post Messages" enabled.';
+  }
+  if (desc) return `Telegram rejected the message: "${desc}". Verify your Bot Token and Chat ID in Bot Settings.`;
+  return 'Telegram rejected the message. Make sure you pressed START on your new bot, then re-copy your Chat ID (each bot has its own) and Bot Token in Bot Settings.';
+}
+
+/**
+ * Validates a bot token + chat ID WITHOUT sending a full signal. Calls getMe
+ * (token check) then sends a tiny confirmation message (chat-ID check). Powers
+ * the "Test Connection" button in Bot Settings so users get instant feedback.
+ */
+export async function testTelegramConnection(
+  botToken: string,
+  chatId: string,
+): Promise<{ success: boolean; message: string }> {
+  if (!botToken || !chatId) {
+    return { success: false, message: 'Enter both your Bot Token and Chat ID first.' };
+  }
+  // 1) Token valid?
+  try {
+    const me = await callTelegramApi(botToken, 'getMe', {});
+    if (!me.ok) {
+      return { success: false, message: explainTelegramError(me) };
+    }
+    const botName = me.result?.username ? `@${me.result.username}` : 'your bot';
+    // 2) Can it actually deliver to this chat?
+    const sent = await callTelegramApi(botToken, 'sendMessage', {
+      chat_id: chatId,
+      text: `✅ CoTraders connected to ${botName}. Your Telegram alerts are working!`,
+      parse_mode: 'HTML',
+    });
+    return sent.ok
+      ? { success: true, message: `Connected! A test message from ${botName} was delivered to your chat.` }
+      : { success: false, message: explainTelegramError(sent) };
+  } catch (e: any) {
+    return { success: false, message: e.message || 'Could not reach Telegram.' };
+  }
+}
+
 export async function sendTelegramSignalNotification(
   botToken: string,
   chatId: string,
@@ -216,7 +280,7 @@ ${signal.momentumNote ? `⚡ <b>Momentum:</b> <i>${signal.momentumNote}</i>` : '
     });
     return data.ok
       ? { success: true, message: `Trade signal & S/R analysis for ${signal.pair} sent to Telegram!` }
-      : { success: false, message: data.description || 'Telegram rejected the message — check your bot token & chat ID.' };
+      : { success: false, message: explainTelegramError(data) };
   } catch (error: any) {
     return { success: false, message: error.message || 'Error connecting to Telegram API.' };
   }

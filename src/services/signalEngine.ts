@@ -4,15 +4,21 @@ import { atr, volumeDelta, rsi, macd, ema, detectRsiDivergence } from './indicat
 import { runWalkForwardBacktest } from './backtestEngine';
 import { SL_ATR, TP1_ATR, TP2_ATR, TP3_ATR, MIN_CONFLUENCE, MIN_CONFIDENCE_TO_EMIT, MIN_BACKTEST_WINRATE, riskRewardLabel, suggestLeverage, suggestPositionSize } from './riskConfig';
 import { fetchKlines, fetchTopCryptos } from './binanceApi';
+import { FOREX_MAJORS } from './forexApi';
 
 export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
 
-// FUTURES ONLY. Binance lists no FX pairs, so synthetic forex majors are no
-// longer scanned — the entire universe is now real Binance USDT-M perpetual
-// futures (gold XAUUSDT and silver XAGUSDT are real perps and are picked up
-// automatically by buildDynamicWatchlist()). Kept as an empty export purely so
-// existing importers keep working.
-export const MACRO_SCAN_WATCHLIST: ScanTarget[] = [];
+// Real forex majors (EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF,
+// NZD/USD, EUR/JPY, GBP/JPY). Binance lists no FX pairs, so these are pulled
+// live from a free forex API (Yahoo chart) via forexApi/fetchKlines — the SAME
+// strategy engine then runs on genuine FX candles. They're always included in
+// every scan cycle (see getScanBatch) and classified as FOREX.
+export const MACRO_SCAN_WATCHLIST: ScanTarget[] = FOREX_MAJORS.map(f => ({
+  symbol: f.symbol,
+  pair: f.pair,
+  interval: '15m',
+  isScalp: false,
+}));
 
 // Used as a fallback (and as the default export for anything that still
 // imports DEFAULT_SCAN_WATCHLIST directly) before the dynamic top-volume

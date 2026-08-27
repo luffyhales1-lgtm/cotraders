@@ -1,4 +1,5 @@
 import { CoinTicker, CandleData, OrderBookItem, LiveTrade } from '@/types/trading';
+import { isForexSymbol, fetchForexKlines, fetchForexTickers } from './forexApi';
 
 // FUTURES ONLY. The entire tradable universe in COTRADERS is Binance USDT-M
 // perpetual futures (this includes the real XAUUSDT gold and XAGUSDT silver
@@ -53,6 +54,15 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
     });
 
     cachedTickers = formatted;
+
+    // Append LIVE forex majors (from the free FX feed) so real EUR/USD, GBP/USD,
+    // USD/JPY, etc. sit alongside the futures universe. Non-blocking: if the FX
+    // feed is momentarily unreachable we just show crypto this cycle.
+    try {
+      const forex = await fetchForexTickers();
+      if (forex.length > 0) cachedTickers = [...formatted, ...forex];
+    } catch { /* ignore — crypto still returned */ }
+
     return cachedTickers;
   } catch (error) {
     return getDynamicLiveFuturesTickers();
@@ -63,6 +73,11 @@ export async function fetchTopCryptos(): Promise<CoinTicker[]> {
 // candles: if the request fails we return an empty array so the scanner simply
 // skips that symbol instead of ever generating a signal from fabricated data.
 export async function fetchKlines(symbol: string, interval = '15m', limit = 50): Promise<CandleData[]> {
+  // Forex majors aren't on Binance — pull real intraday candles from the live
+  // forex feed instead, so the same signal engine runs on genuine FX data.
+  if (isForexSymbol(symbol)) {
+    return fetchForexKlines(symbol, interval, limit);
+  }
   try {
     const res = await fetch(`${BINANCE_FUTURES_URL}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`).catch(() => null);
     if (res && res.ok) {

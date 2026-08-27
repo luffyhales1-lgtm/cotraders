@@ -23,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { testTelegramConnection } from '@/services/telegramService';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 
@@ -32,6 +33,18 @@ const BotSettings: React.FC = () => {
   const [chatId, setChatId] = useState<string>('');
   const [autoScanEnabled, setAutoScanEnabled] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [testing, setTesting] = useState<boolean>(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const handleTestConnection = async () => {
+    setTesting(true);
+    setTestResult(null);
+    const res = await testTelegramConnection(botToken.trim(), chatId.trim());
+    setTestResult({ ok: res.success, msg: res.message });
+    if (res.success) toast.success(res.message);
+    else toast.error(res.message);
+    setTesting(false);
+  };
 
   useEffect(() => {
     if (!user || !isVipMember) return;
@@ -201,6 +214,29 @@ const BotSettings: React.FC = () => {
             >
               {loading ? 'Saving...' : 'Save Bot Configuration'}
             </Button>
+
+            <Button
+              type="button"
+              onClick={handleTestConnection}
+              disabled={testing || !botToken || !chatId}
+              variant="outline"
+              className="w-full border-cyan-500/50 text-cyan-600 hover:bg-cyan-500/10 font-bold text-xs py-5 px-8 gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {testing ? 'Testing connection…' : 'Test Connection (send test message)'}
+            </Button>
+
+            {testResult && (
+              <div
+                className={`text-xs rounded-xl p-3 border ${
+                  testResult.ok
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
+                    : 'border-rose-500/40 bg-rose-500/10 text-rose-600'
+                }`}
+              >
+                {testResult.msg}
+              </div>
+            )}
           </form>
         </CardContent>
       </div>
