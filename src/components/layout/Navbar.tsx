@@ -69,7 +69,7 @@ export const Navbar: React.FC = () => {
   }, [location.pathname]);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-4 lg:px-8 py-3 transition-all duration-300 shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset,0_12px_30px_-24px_rgba(15,23,42,0.25)]">
+    <header className="sticky top-0 z-50 bg-white/95 border-b border-slate-200/70 px-4 lg:px-8 py-3 shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset,0_12px_30px_-24px_rgba(15,23,42,0.25)]">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Brand Logo */}
         <Link to="/" className="flex items-center gap-2.5 group">

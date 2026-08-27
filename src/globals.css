@@ -54,7 +54,6 @@
       radial-gradient(circle at 12% -5%, hsl(350 90% 66% / 0.12), transparent 44%),
       radial-gradient(circle at 88% 8%, hsl(12 90% 62% / 0.09), transparent 42%),
       radial-gradient(circle at 50% 110%, hsl(340 85% 68% / 0.08), transparent 55%);
-    background-attachment: fixed;
   }
 }
 
@@ -187,13 +186,15 @@
   transform: translateY(-1px);
 }
 
-/* Ambient blob — static & light (was animated blur(60px), a big cost) */
+/* Ambient blob — static & light (was animated blur(60px), a big cost).
+   Promoted to its own GPU layer so it never repaints on scroll. */
 .ambient-orb {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(48px);
+  filter: blur(40px);
   opacity: 0.35;
   pointer-events: none;
+  transform: translateZ(0);
 }
 
 @keyframes glow-pulse {
@@ -240,6 +241,7 @@
     radial-gradient(44% 48% at 62% 90%, hsl(33 92% 62% / 0.09), transparent 72%);
   filter: blur(22px);
   opacity: 0.9;
+  transform: translateZ(0);
 }
 
 /* ---- 3D perspective scene + hover tilt cards ---- */

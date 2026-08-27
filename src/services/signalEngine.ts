@@ -1,8 +1,8 @@
 import { Signal, CandleData, MarketOverview } from '@/types/trading';
 import { evaluateAllStrategies } from './strategies';
-import { atr, volumeDelta, rsi, macd, detectRsiDivergence } from './indicators';
+import { atr, volumeDelta, rsi, macd, ema, detectRsiDivergence } from './indicators';
 import { runWalkForwardBacktest } from './backtestEngine';
-import { SL_ATR, TP1_ATR, TP2_ATR, TP3_ATR, riskRewardLabel, suggestLeverage, suggestPositionSize } from './riskConfig';
+import { SL_ATR, TP1_ATR, TP2_ATR, TP3_ATR, MIN_CONFLUENCE, MIN_CONFIDENCE_TO_EMIT, MIN_BACKTEST_WINRATE, riskRewardLabel, suggestLeverage, suggestPositionSize } from './riskConfig';
 import { fetchKlines, fetchTopCryptos } from './binanceApi';
 
 export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
@@ -173,14 +173,38 @@ async function runScan(watchlist?: ScanTarget[]): Promise<Signal[]> {
         const triggered = results.filter(r => r.triggered && r.direction);
         if (triggered.length === 0) continue;
 
-        const best = triggered[0];
-        const agreeing = triggered.filter(r => r.direction === best.direction);
+        // Consensus direction: let the MAJORITY of triggered strategies vote on
+        // direction instead of blindly taking the first fire (which was often a
+        // lone counter-trend reversal). If longs and shorts are evenly split the
+        // read is ambiguous — skip it entirely rather than force a coin-flip trade.
+        const longVotes = triggered.filter(r => r.direction === 'LONG').length;
+        const shortVotes = triggered.filter(r => r.direction === 'SHORT').length;
+        const netDir: 'LONG' | 'SHORT' | null =
+          longVotes > shortVotes ? 'LONG' : shortVotes > longVotes ? 'SHORT' : null;
+        if (!netDir) continue;
 
+        const agreeing = triggered.filter(r => r.direction === netDir);
+        // Headline the setup with a continuation strategy (TREND/BREAKOUT) over a
+        // pure reversal when available, so the labelled trade matches the bias.
+        const catRank = (c?: string) => (c === 'TREND' ? 0 : c === 'BREAKOUT' ? 1 : c === 'ICT/SMC' ? 2 : 3);
+        const ordered = agreeing.slice().sort((a, b) => catRank((a as { category?: string }).category) - catRank((b as { category?: string }).category));
+        const best = ordered[0];
+
+        // The hard quality gate lives inside buildSignalFromStrategyHit(): it
+        // returns null unless the setup clears confluence + trend + momentum +
+        // conviction, so EVERY signal-emitting surface on the site inherits the
+        // same "analyze, then trade" bar from this one choke point.
         const signal = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name));
         if (signal) signals.push(signal);
       } catch (e) {
         console.error(`[scanMarketForSignals] ${target.symbol} failed:`, e);
       }
+      // Yield to the event loop between symbols. Several fetches can resolve in
+      // the same tick, which would otherwise run their (synchronous) strategy
+      // math back-to-back and stall a paint frame; this hands the browser a
+      // window to render, keeping the UI smooth during a live scan. Network I/O
+      // dominates wall-clock, so this adds no meaningful scan latency.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   };
 
@@ -197,6 +221,7 @@ export function buildSignalFromStrategyHit(
   candles: CandleData[],
   hit: { name: string; direction: 'LONG' | 'SHORT' | null; reason: string },
   confluenceStrategies: string[],
+  opts: { gate?: boolean } = {},
 ): Signal | null {
   if (!hit.direction) return null;
 
@@ -247,6 +272,54 @@ export function buildSignalFromStrategyHit(
     confidence -= 8; // divergence contradicts the trade
   }
   const confidenceScore = Math.round(Math.min(98, Math.max(30, confidence)));
+
+  // ----------------------------------------------------------------------
+  // QUALIFICATION GATE — "analyze, THEN trade". A raw trigger is not enough;
+  // the setup must be confirmed on four independent axes before it can become
+  // a tradable signal. Anything that fails is dropped (returns null) so it
+  // never reaches the journal, scanners or bot. This is the ONE choke point
+  // every signal surface on the site shares. Research tools (the Custom
+  // Scanner Sandbox) pass { gate: false } to inspect raw single-strategy reads.
+  // ----------------------------------------------------------------------
+  const enforceGate = opts.gate !== false;
+  if (enforceGate) {
+    // 1) Confluence — at least MIN_CONFLUENCE independent strategies must agree.
+    if (confluenceCount < MIN_CONFLUENCE) return null;
+
+    // 2) Trend regime — never fight a clearly-established trend. This blocks the
+    //    counter-trend knife-catches that were the main source of losing trades.
+    const ema50Arr = ema(closes, 50);
+    const ema200Arr = closes.length >= 200 ? ema(closes, 200) : ema(closes, Math.min(50, closes.length - 1));
+    const ema50v = ema50Arr[i];
+    const ema200v = ema200Arr[i];
+    const regimeUp = ema50v > ema200v;     // fast trend above slow = bullish regime
+    const regimeDown = ema50v < ema200v;   // fast trend below slow = bearish regime
+    const priceAbove200 = entryPrice > ema200v;
+    if (hit.direction === 'LONG' && regimeDown && !priceAbove200) return null;  // clear downtrend, don't buy
+    if (hit.direction === 'SHORT' && regimeUp && priceAbove200) return null;    // clear uptrend, don't short
+
+    // 3) Momentum confirmation — RSI/MACD must not contradict the trade, and at
+    //    least one of them must actively support the direction.
+    const macdHist = macdRes.histogram[i];
+    const rsiSupportsLong = rsiVal >= 48;
+    const rsiSupportsShort = rsiVal <= 52;
+    const macdSupportsLong = macdHist > 0;
+    const macdSupportsShort = macdHist < 0;
+    if (hit.direction === 'LONG') {
+      if (rsiVal < 38) return null;                            // far too weak to be buying
+      if (!rsiSupportsLong && !macdSupportsLong) return null;  // neither indicator backs the long
+    } else {
+      if (rsiVal > 62) return null;                            // far too strong to be shorting
+      if (!rsiSupportsShort && !macdSupportsShort) return null;
+    }
+
+    // 4) Proven-loser guard — if we DO have a reliable historical win rate for
+    //    this strategy on this pair, it must clear break-even + a safety margin.
+    if (winProbability !== null && winProbability < MIN_BACKTEST_WINRATE) return null;
+
+    // 5) Conviction floor — only genuinely high-quality composite setups issue.
+    if (confidenceScore < MIN_CONFIDENCE_TO_EMIT) return null;
+  }
 
   const position = suggestPositionSize(atrPct, leverage.max, confidenceScore);
   const assetClass = classifyAsset(target.symbol);

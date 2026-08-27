@@ -114,15 +114,26 @@ export const TelegramBotSimulator: React.FC = () => {
         return;
       }
 
-      const best = triggered[0];
-      const agreeing = triggered.filter(r => r.direction === best.direction).map(r => r.name);
-      const signal = buildSignalFromStrategyHit(
-        { symbol: selected.symbol, pair: selected.pair, interval: selectedTimeframe },
-        candles, best, agreeing,
-      );
+      // Mirror the live engine exactly: consensus direction (majority vote of the
+      // triggered strategies), then hand it to the shared quality gate so the
+      // simulated bot output matches what the real gated dispatcher would send.
+      const longVotes = triggered.filter(r => r.direction === 'LONG').length;
+      const shortVotes = triggered.filter(r => r.direction === 'SHORT').length;
+      const netDir: 'LONG' | 'SHORT' | null =
+        longVotes > shortVotes ? 'LONG' : shortVotes > longVotes ? 'SHORT' : null;
+      const agreeingReads = netDir ? triggered.filter(r => r.direction === netDir) : [];
+      const best = agreeingReads[0];
+      const agreeing = agreeingReads.map(r => r.name);
+      const signal = best
+        ? buildSignalFromStrategyHit(
+            { symbol: selected.symbol, pair: selected.pair, interval: selectedTimeframe },
+            candles, best, agreeing,
+          )
+        : null;
       if (!signal) {
         setScannedSignal(null);
         setStep('COMPLETED');
+        toast.info(`${selected.pair}: strategies triggered but the setup didn't clear the quality gate (needs stronger confluence, trend & momentum alignment). Treated as "no trade" — exactly what keeps the journal clean.`);
         return;
       }
 

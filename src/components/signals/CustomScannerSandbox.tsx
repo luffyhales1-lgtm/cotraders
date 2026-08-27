@@ -102,11 +102,17 @@ export const CustomScannerSandbox: React.FC = () => {
       if (primary) {
         const agreeing = triggered.filter(r => r.direction === primary.direction).map(r => r.name);
         const target: ScanTarget = { symbol: asset.symbol, pair: asset.pair, interval: selectedTimeframe, isScalp };
+        // Sandbox is a research tool: the user deliberately picks ONE strategy to
+        // inspect, so we bypass the site-wide qualification gate (which requires
+        // multi-strategy confluence) and show the raw single-strategy read. The
+        // improved SL/TP risk:reward still applies — only the confluence/trend
+        // gate is skipped here.
         const built = buildSignalFromStrategyHit(
           target,
           candles,
           { name: primary.name, direction: primary.direction, reason: primary.reason },
           agreeing.length > 0 ? agreeing : [primary.name],
+          { gate: false },
         );
         setSignal(built);
         if (built) {

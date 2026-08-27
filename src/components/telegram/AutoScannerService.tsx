@@ -61,6 +61,36 @@ function readStoredAutoScanEnabled(): boolean {
   }
 }
 
+/**
+ * Isolated 1-second countdown. Kept as its own memoized component so the
+ * per-second tick only re-renders this tiny span — NOT the entire scanner card
+ * and its log list (which was a constant every-second reconcile before).
+ */
+const ScanCountdown: React.FC<{
+  scanOn: boolean;
+  isScanning: boolean;
+  nextScanAtRef: React.MutableRefObject<number>;
+}> = React.memo(({ scanOn, isScanning, nextScanAtRef }) => {
+  const [countdownSec, setCountdownSec] = useState<number>(SCAN_INTERVAL_MS / 1000);
+
+  useEffect(() => {
+    if (!scanOn) { setCountdownSec(0); return; }
+    const tick = () => {
+      setCountdownSec(Math.max(0, Math.round((nextScanAtRef.current - Date.now()) / 1000)));
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [scanOn, nextScanAtRef]);
+
+  return (
+    <span className="font-extrabold text-cyan-600 text-sm tabular-nums">
+      {scanOn ? (isScanning ? '—' : `${countdownSec}s`) : 'paused'}
+    </span>
+  );
+});
+ScanCountdown.displayName = 'ScanCountdown';
+
 export const AutoScannerService: React.FC = () => {
   const { user, telegramBotToken, telegramChatId, dispatchTelegramSignal, isVipMember } = useAuth();
   const isAdmin = !!user?.isAdmin;
@@ -80,7 +110,6 @@ export const AutoScannerService: React.FC = () => {
   const isVipWithBot = isVipMember && !!telegramBotToken && !!telegramChatId;
   const trackedTradesRef = useRef<Map<string, Signal & { hitTp1: boolean; hitTp2: boolean }>>(new Map());
   const nextScanAtRef = useRef<number>(Date.now() + SCAN_INTERVAL_MS);
-  const [countdownSec, setCountdownSec] = useState<number>(SCAN_INTERVAL_MS / 1000);
 
   const toggleAutoScan = () => {
     if (!isAdmin) {
@@ -193,6 +222,7 @@ export const AutoScannerService: React.FC = () => {
         return;
       }
 
+      let firedWithoutBot = 0;
       for (const signal of signals) {
         const digits = signal.entryPrice < 10 ? 4 : 2;
         const supp1 = +(Math.min(signal.entryPrice, signal.stopLoss) * 0.999).toFixed(digits);
@@ -249,10 +279,10 @@ export const AutoScannerService: React.FC = () => {
             momentumStatus: signal.momentumStatus,
           });
           if (dispatched) monitorTradeForTpHits(signal);
-        } else if (!isVipMember) {
-          toast.info(`🔍 ${signal.pair} ${signal.type} fired (${signal.strategy}) — upgrade to VIP & add your own bot for live alerts.`);
         } else {
-          toast.info(`🔍 ${signal.pair} ${signal.type} fired (${signal.strategy}) — add your Telegram bot in Bot Settings to receive alerts.`);
+          // No live bot dispatch for this user — count it and fire ONE summary
+          // toast after the loop instead of spamming a toast per signal.
+          firedWithoutBot++;
         }
 
         const newLog: AutoScanLog = {
@@ -278,6 +308,16 @@ export const AutoScannerService: React.FC = () => {
         setLogs(prev => [newLog, ...prev].slice(0, 12));
       }
 
+      if (firedWithoutBot > 0) {
+        const first = signals[0];
+        const label = signals.length === 1
+          ? `${first.pair} ${first.type} (${first.strategy})`
+          : `${signals.length} new setups`;
+        toast.info(!isVipMember
+          ? `🔍 ${label} fired — upgrade to VIP & add your own bot for live alerts.`
+          : `🔍 ${label} fired — add your Telegram bot in Bot Settings for live alerts.`);
+      }
+
       setLastScanTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
       console.error('Auto-scan error:', err);
@@ -298,18 +338,6 @@ export const AutoScannerService: React.FC = () => {
     const id = setInterval(runAndSchedule, SCAN_INTERVAL_MS);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanOn]);
-
-  // Countdown ticker -- purely visual, reads the same clock the scan loop uses.
-  useEffect(() => {
-    if (!scanOn) { setCountdownSec(0); return; }
-    const tick = () => {
-      const remaining = Math.max(0, Math.round((nextScanAtRef.current - Date.now()) / 1000));
-      setCountdownSec(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
   }, [scanOn]);
 
   // Automatic hourly backtest report so it goes out even if the user never
@@ -361,9 +389,7 @@ export const AutoScannerService: React.FC = () => {
 
           <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs flex items-center gap-2">
             <span className="text-slate-500">Next Scan:</span>
-            <span className="font-extrabold text-cyan-600 text-sm tabular-nums">
-              {scanOn ? (isScanning ? '—' : `${countdownSec}s`) : 'paused'}
-            </span>
+            <ScanCountdown scanOn={scanOn} isScanning={isScanning} nextScanAtRef={nextScanAtRef} />
           </div>
 
           {isAdmin ? (

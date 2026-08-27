@@ -1,12 +1,28 @@
 // Shared ATR multiples used by BOTH the live signal generator and the
 // backtest engine, so the win rate you see was actually measured against
 // the same SL/TP rules the live signal uses — not two different systems.
-export const SL_ATR = 1.3;
-export const TP1_ATR = 1.0;
-export const TP2_ATR = 1.9;
-export const TP3_ATR = 3.2;
-export const MAX_FORWARD_BARS = 30;
+//
+// CRITICAL: TP1 must sit FARTHER from entry than the stop. The journal and the
+// backtest both resolve a trade at first touch of TP1 (win) or SL (loss), so if
+// TP1 were CLOSER than the stop, each win would pay less than each loss and the
+// system would need an unrealistic >56% hit rate just to break even — that was
+// the root cause of the paper journal running negative. With TP1 at 1.5x the
+// risk, break-even is ~40%, a bar the gated with-trend signals actually clear.
+export const SL_ATR = 1.4;
+export const TP1_ATR = 2.1;   // primary target — 1:1.50 reward:risk
+export const TP2_ATR = 3.5;   // runner         — 1:2.50
+export const TP3_ATR = 5.2;   // extended       — 1:3.71
+export const MAX_FORWARD_BARS = 40; // give the wider TP1 room to resolve before a trade is discarded as "unresolved"
 export const MIN_TRADES_TO_REPORT = 5;
+
+// ---- Signal qualification gate ("analyze, THEN trade") ----------------------
+// A raw strategy trigger is NOT a trade. buildSignalFromStrategyHit() requires
+// these minimums so only confirmed, with-trend, momentum-backed, multi-strategy
+// setups ever reach the journal / scanners / bot. Tuned to keep the paper
+// journal in positive expectancy instead of bleeding on low-quality fires.
+export const MIN_CONFLUENCE = 2;          // at least this many strategies must agree on direction
+export const MIN_CONFIDENCE_TO_EMIT = 58; // composite conviction floor (0-100)
+export const MIN_BACKTEST_WINRATE = 42;   // if a real win rate is known it must clear break-even (~40%) + margin
 
 export function riskRewardLabel(tpAtr: number): string {
   return `1:${(tpAtr / SL_ATR).toFixed(2)}`;

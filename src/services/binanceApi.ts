@@ -125,6 +125,28 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
   let reconnectTimer: any = null;
   let attempts = 0;
 
+  // Coalesce the high-frequency all-market stream. The socket can push several
+  // frames per second; we keep only the newest price per symbol and flush to
+  // subscribers at most once per window, so live tiles re-render smoothly
+  // instead of thrashing React on every frame.
+  const THROTTLE_MS = 1500;
+  let pending: Record<string, number> | null = null;
+  let flushTimer: any = null;
+
+  const flush = () => {
+    flushTimer = null;
+    if (isClosed || !pending) return;
+    const batch = pending;
+    pending = null;
+    onPriceUpdate(batch);
+  };
+
+  const queueUpdate = (prices: Record<string, number>) => {
+    if (pending) Object.assign(pending, prices);
+    else pending = prices;
+    if (!flushTimer) flushTimer = setTimeout(flush, THROTTLE_MS);
+  };
+
   const scheduleReconnect = () => {
     if (isClosed || reconnectTimer) return;
     const delay = Math.min(15000, 2000 * Math.max(1, attempts)); // 2s → 15s backoff
@@ -154,7 +176,7 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
                 if (item.s === 'XAGUSDT') liveSilverPrice = parseFloat(item.c) || liveSilverPrice;
               }
             });
-            onPriceUpdate(prices);
+            queueUpdate(prices);
           }
         } catch (e) {
           // silent
@@ -173,6 +195,7 @@ export function subscribeBinanceTickerStream(onPriceUpdate: (data: Record<string
   return () => {
     isClosed = true;
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (flushTimer) clearTimeout(flushTimer);
     if (ws) { try { ws.close(); } catch { /* noop */ } }
   };
 }

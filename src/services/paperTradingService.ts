@@ -208,8 +208,13 @@ export async function updateOpenTrades(): Promise<PaperTrade[]> {
       // Synthetic FX (no Binance listing) returns nothing — leave it OPEN.
       if (candles.length === 0) return;
 
-      const since = candles.filter(c => c.openTime >= t.openedAt - 60_000);
-      const scan = since.length > 0 ? since : candles;
+      // Only judge the trade on candles that OPENED at or after it was entered.
+      // A candle already forming at entry has a high/low that may predate the
+      // fill, which would otherwise trigger a phantom TP/SL; and resolving against
+      // stale pre-entry price action is simply wrong. If nothing has printed since
+      // entry yet, leave the trade OPEN — don't resolve it against old data.
+      const scan = candles.filter(c => c.openTime >= t.openedAt);
+      if (scan.length === 0) return;
 
       let mfeTag: PaperTrade['mfeTag'] = t.mfeTag ?? null;
       const tagRank = { TP1: 1, TP2: 2, TP3: 3 } as const;
