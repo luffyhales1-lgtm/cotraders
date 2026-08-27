@@ -87,15 +87,8 @@ async function fetchYahooChart(symbol: string, interval: string, range: string):
   return null;
 }
 
-/**
- * Live FX candles for a major, newest last, in the app's CandleData shape.
- * Returns [] on any failure so the signal engine skips the symbol (no fakery).
- */
-export async function fetchForexKlines(symbol: string, interval = '15m', limit = 90): Promise<CandleData[]> {
-  const { interval: yi, range } = yahooParams(interval);
-  const json = await fetchYahooChart(symbol, yi, range);
-  if (!json) return [];
-
+/** Parse a Yahoo chart JSON into the app's CandleData[] (newest last). */
+function parseYahooCandles(json: any, limit: number): CandleData[] {
   try {
     const result = json.chart.result[0];
     const ts: number[] = result.timestamp || [];
@@ -122,6 +115,28 @@ export async function fetchForexKlines(symbol: string, interval = '15m', limit =
   } catch {
     return [];
   }
+}
+
+/**
+ * Live FX candles for a major, newest last, in the app's CandleData shape.
+ * Returns [] on any failure so the signal engine skips the symbol (no fakery).
+ */
+export async function fetchForexKlines(symbol: string, interval = '15m', limit = 90): Promise<CandleData[]> {
+  const { interval: yi, range } = yahooParams(interval);
+  const json = await fetchYahooChart(symbol, yi, range);
+  if (!json) return [];
+  return parseYahooCandles(json, limit);
+}
+
+/**
+ * A FULL YEAR of real daily FX candles for a major (Yahoo range=1y). Used by the
+ * whole-website 1-year backtest so forex is measured over the same horizon as
+ * crypto. Returns [] on failure so the symbol is simply skipped (never faked).
+ */
+export async function fetchForexDailyYear(symbol: string, limit = 370): Promise<CandleData[]> {
+  const json = await fetchYahooChart(symbol, '1d', '1y');
+  if (!json) return [];
+  return parseYahooCandles(json, limit);
 }
 
 /**
