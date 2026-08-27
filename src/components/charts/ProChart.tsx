@@ -225,7 +225,7 @@ export const ProChart: React.FC<ProChartProps> = ({ symbol, pair, currentPrice, 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
 
         {/* Pro Trading Chart View */}
-        <div className="lg:col-span-3 p-4 bg-slate-50/60 min-h-[420px] flex flex-col justify-between">
+        <div className="lg:col-span-3 p-4 bg-rose-50/60 min-h-[420px] flex flex-col justify-between">
           {loading ? (
             <div className="h-[380px] flex items-center justify-center text-slate-500 gap-2 font-mono text-sm">
               <Zap className="h-5 w-5 text-indigo-500 animate-spin" /> Fetching live candlestick stream...

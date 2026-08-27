@@ -19,15 +19,15 @@ export const AmbientBackground: React.FC = () => {
       {/* soft light orbs (defined in globals.css .ambient-orb — static, low-cost) */}
       <div
         className="ambient-orb"
-        style={{ top: '-6rem', left: '-4rem', width: '22rem', height: '22rem', background: 'radial-gradient(circle, hsl(243 80% 62% / 0.30), transparent 70%)' }}
+        style={{ top: '-6rem', left: '-4rem', width: '22rem', height: '22rem', background: 'radial-gradient(circle, hsl(350 85% 66% / 0.28), transparent 70%)' }}
       />
       <div
         className="ambient-orb"
-        style={{ top: '20%', right: '-6rem', width: '24rem', height: '24rem', background: 'radial-gradient(circle, hsl(199 89% 60% / 0.24), transparent 70%)' }}
+        style={{ top: '20%', right: '-6rem', width: '24rem', height: '24rem', background: 'radial-gradient(circle, hsl(14 90% 62% / 0.22), transparent 70%)' }}
       />
       <div
         className="ambient-orb"
-        style={{ bottom: '-8rem', left: '30%', width: '26rem', height: '26rem', background: 'radial-gradient(circle, hsl(262 78% 66% / 0.22), transparent 70%)' }}
+        style={{ bottom: '-8rem', left: '30%', width: '26rem', height: '26rem', background: 'radial-gradient(circle, hsl(336 85% 66% / 0.20), transparent 70%)' }}
       />
     </div>
   );
