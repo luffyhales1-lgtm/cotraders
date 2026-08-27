@@ -72,10 +72,10 @@ export const MarketAnalyzer: React.FC<MarketAnalyzerProps> = ({ onSignals }) => 
   const BiasIcon = overview?.bias === 'BULLISH' ? TrendingUp : overview?.bias === 'BEARISH' ? TrendingDown : Minus;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-cyan-200 bg-gradient-to-br from-white via-indigo-50 to-white p-6 md:p-8 shadow-2xl mb-8">
+    <div className="glass-panel relative overflow-hidden rounded-3xl p-6 md:p-8 mb-8">
       {/* ambient depth orbs for the 3D feel */}
-      <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-cyan-200/40 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -top-16 -right-10 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-indigo-500/10 blur-3xl" />
 
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="flex items-start gap-4">

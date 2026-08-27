@@ -138,6 +138,14 @@
   .to-slate-50 { --tw-gradient-to: hsl(224 34% 8%) var(--tw-gradient-to-position) !important; }
   .from-indigo-50 { --tw-gradient-from: hsl(243 45% 18%) var(--tw-gradient-from-position) !important; }
   .from-amber-100 { --tw-gradient-from: hsl(40 55% 22%) var(--tw-gradient-from-position) !important; }
+  .from-amber-50 { --tw-gradient-from: hsl(40 50% 16%) var(--tw-gradient-from-position) !important; }
+  .from-amber-100\/70 { --tw-gradient-from: hsl(40 55% 22% / 0.7) var(--tw-gradient-from-position) !important; }
+  /* mid (via) stops that were leaking bright — remap to dark */
+  .via-slate-50 { --tw-gradient-stops: var(--tw-gradient-from), hsl(224 34% 8%) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+  .via-slate-100 { --tw-gradient-stops: var(--tw-gradient-from), hsl(224 30% 12%) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+  .via-indigo-50 { --tw-gradient-stops: var(--tw-gradient-from), hsl(243 45% 16%) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+  .via-indigo-100 { --tw-gradient-stops: var(--tw-gradient-from), hsl(243 45% 18%) var(--tw-gradient-via-position), var(--tw-gradient-to) !important; }
+  .to-slate-100 { --tw-gradient-to: hsl(224 30% 12%) var(--tw-gradient-to-position) !important; }
 }
 
 /* ---- Ticker marquee ---- */
