@@ -4,6 +4,7 @@ import { TickerTape } from '@/components/layout/TickerTape';
 import { UpgradeBanner } from '@/components/subscription/UpgradeBanner';
 import { StrategyBacktest } from '@/components/trading/StrategyBacktest';
 import { FullBacktestReport } from '@/components/trading/FullBacktestReport';
+import { HundredDollarBacktestReport } from '@/components/trading/HundredDollarBacktestReport';
 import { EconomicCalendar } from '@/components/trading/EconomicCalendar';
 import { GrokMarketBot } from '@/components/analytics/GrokMarketBot';
 import { WhaleTracker } from '@/components/analytics/WhaleTracker';
@@ -64,6 +65,7 @@ const AnalyticsPage: React.FC = () => {
         <GrokMarketBot />
 
         <div className="grid grid-cols-1 gap-8 mt-8">
+          <HundredDollarBacktestReport />
           <FullBacktestReport />
           <StrategyBacktest />
           <EconomicCalendar />

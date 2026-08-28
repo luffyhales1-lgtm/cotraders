@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import BotSettings from "./pages/BotSettings"; // Import the new page
 import JournalPage from "./pages/JournalPage";
 import ChartAnalyzerPage from "./pages/ChartAnalyzerPage";
+import AnalysisVideoPage from "./pages/AnalysisVideoPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/analyze" element={<ChartAnalyzerPage />} />
+            <Route path="/analysis-video" element={<AnalysisVideoPage />} />
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/login" element={<LoginPage />} />

@@ -26,6 +26,73 @@ export interface CoinTicker {
 }
 
 export type SignalType = 'LONG' | 'SHORT';
+export type TradeMode = 'SCALP' | 'SWING';
+
+/** One strategy's read during the deep analysis pass, kept for the audit trail. */
+export interface StrategyRead {
+  name: string;
+  category: string;
+  triggered: boolean;
+  direction: 'LONG' | 'SHORT' | null;
+  reason: string;
+}
+
+/** A single higher-timeframe confirmation check. */
+export interface TimeframeCheck {
+  timeframe: string;
+  trend: 'UP' | 'DOWN' | 'FLAT';
+  rsi: number | null;
+  agrees: boolean;
+  note: string;
+}
+
+/** Live order-book / volume liquidity read taken at signal time. */
+export interface LiquidityCheck {
+  bidDepth: number;          // summed size on the top bid levels
+  askDepth: number;          // summed size on the top ask levels
+  imbalance: number;         // bidDepth / askDepth (>1 = buyers stacked)
+  spreadPct: number | null;  // best ask - best bid, as % of price
+  quoteVolume24h: number | null;
+  wall: string | null;       // largest resting wall found, if any
+  passed: boolean;
+  note: string;
+}
+
+/** One line of the qualification gate, so the verdict is fully auditable. */
+export interface GateCheck {
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+/**
+ * The complete, human-readable audit trail behind a signal. This is what the
+ * Analysis Video section narrates frame by frame, and it is built from the SAME
+ * live data the signal was generated from — never from stored/old market data.
+ */
+export interface SignalAnalysis {
+  symbol: string;
+  pair: string;
+  mode: TradeMode;
+  baseTimeframe: string;
+  takenAt: string;              // ISO timestamp of the analysis
+  direction: 'LONG' | 'SHORT' | null;
+  strategyReads: StrategyRead[];      // ALL 21 strategies, triggered or not
+  triggeredCount: number;
+  agreeingStrategies: string[];
+  timeframeChecks: TimeframeCheck[];  // multi-timeframe verification
+  liquidity: LiquidityCheck | null;
+  gateChecks: GateCheck[];
+  verdict: 'TRADE' | 'REJECTED';
+  rejectionReason?: string;
+  rsi: number | null;
+  macdHistogram: number | null;
+  atrPercent: number | null;
+  volumeDelta: number | null;
+  trendNote: string;
+  candles?: CandleData[];             // base-timeframe candles used (for the video chart)
+}
+
 export type SignalStatus = 'ACTIVE' | 'HIT_TP1' | 'HIT_TP2' | 'HIT_TP3' | 'STOP_LOSS' | 'PENDING';
 export type StrategyName =
   | 'Triple EMA Pullback'
@@ -94,6 +161,15 @@ export interface Signal {
   confidenceScore?: number;                // 0-100 composite conviction score
   confluenceCount?: number;                // how many strategies agreed
   assetClass?: 'CRYPTO' | 'GOLD' | 'SILVER' | 'FOREX';
+  // ---- Trade-mode & audit-trail fields -------------------------------------
+  mode?: TradeMode;                        // SCALP (5m) or SWING (4h)
+  tp1DistancePct?: number;                 // how far TP1 sits from entry, in %
+  slDistancePct?: number;                  // how far the stop sits from entry, in %
+  rrRatio?: number;                        // numeric reward:risk of TP1 (>= 1.1 enforced)
+  levelsWidened?: boolean;                 // true when ATR was too tight and levels were scaled up
+  mtfNote?: string;                        // multi-timeframe confirmation summary
+  liquidityNote?: string;                  // live order-book / volume read
+  analysis?: SignalAnalysis;               // full auditable breakdown (drives the Analysis Video)
 }
 
 // Whole-market breadth snapshot produced by analyzeMarketOverview() and shown

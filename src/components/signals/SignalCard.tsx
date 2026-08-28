@@ -18,8 +18,10 @@ import {
   Activity,
   Gauge,
   Waves,
-  Scale
+  Scale,
+  Video
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -124,6 +126,10 @@ Platform: LiveTrading AI Pro`;
     addPaperTradeFromSignal(signal);
     toast.success(`${signal.pair} ${signal.type} added to your paper-trading journal. Track it on the Journal page.`);
   };
+
+  // Deep link into the Analysis Video studio, which RE-RUNS the full live analysis for this
+  // market (21 strategies, confirmation timeframes, live order book) and renders it as video.
+  const analysisVideoHref = `/analysis-video?symbol=${encodeURIComponent(signal.symbol)}&pair=${encodeURIComponent(signal.pair)}&mode=${signal.mode ?? (signal.isScalp === false ? 'SWING' : 'SCALP')}&auto=1`;
 
   return (
     <Card className={`relative overflow-hidden bg-white border transition-all duration-400 ${isLocked ? 'border-amber-200' : isLong ? 'border-emerald-200 hover:border-emerald-400 shadow-emerald-100' : 'border-rose-200 hover:border-rose-400 shadow-rose-100'} shadow-xl`}>
@@ -317,6 +323,17 @@ Platform: LiveTrading AI Pro`;
               <BookMarked className="h-4 w-4" />
               Take Paper Trade (track risk-free)
             </Button>
+
+            <Link to={analysisVideoHref} className="block">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2 border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-bold gap-1.5"
+              >
+                <Video className="h-4 w-4" />
+                Watch analysis video (live, verify this signal)
+              </Button>
+            </Link>
           </div>
         )}
 

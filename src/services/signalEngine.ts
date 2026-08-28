@@ -1,12 +1,24 @@
-import { Signal, CandleData, MarketOverview } from '@/types/trading';
+import { Signal, CandleData, MarketOverview, TradeMode, SignalAnalysis, StrategyRead, TimeframeCheck, LiquidityCheck, GateCheck } from '@/types/trading';
 import { evaluateAllStrategies } from './strategies';
 import { atr, volumeDelta, rsi, macd, ema, detectRsiDivergence } from './indicators';
 import { runWalkForwardBacktest } from './backtestEngine';
-import { SL_ATR, TP1_ATR, TP2_ATR, TP3_ATR, MIN_CONFLUENCE, MIN_CONFIDENCE_TO_EMIT, MIN_BACKTEST_WINRATE, riskRewardLabel, suggestLeverage, suggestPositionSize } from './riskConfig';
-import { fetchKlines, fetchTopCryptos } from './binanceApi';
+import {
+  MIN_CONFLUENCE, MIN_CONFIDENCE_TO_EMIT, MIN_BACKTEST_WINRATE, MIN_RR,
+  MAX_MTF_CONFLICTS, MAX_ADVERSE_BOOK_RATIO, MIN_QUOTE_VOLUME_24H,
+  riskRewardLabel, suggestLeverage, suggestPositionSize,
+  profileForAsset, scaleToMinReward, RiskProfile,
+} from './riskConfig';
+import { fetchKlines, fetchOrderBook, fetchTopCryptos } from './binanceApi';
 import { FOREX_MAJORS } from './forexApi';
 
-export interface ScanTarget { symbol: string; pair: string; interval?: string; isScalp?: boolean; }
+export interface ScanTarget {
+  symbol: string;
+  pair: string;
+  interval?: string;
+  isScalp?: boolean;
+  /** SCALP (fast intraday) or SWING (multi-day). Defaults to SCALP. */
+  mode?: TradeMode;
+}
 
 // Real forex majors (EUR/USD, GBP/USD, USD/JPY, AUD/USD, USD/CAD, USD/CHF,
 // NZD/USD, EUR/JPY, GBP/JPY). Binance lists no FX pairs, so these are pulled
@@ -18,28 +30,45 @@ export const MACRO_SCAN_WATCHLIST: ScanTarget[] = FOREX_MAJORS.map(f => ({
   pair: f.pair,
   interval: '15m',
   isScalp: false,
+  mode: 'SCALP' as TradeMode,
 }));
 
 // Used as a fallback (and as the default export for anything that still
 // imports DEFAULT_SCAN_WATCHLIST directly) before the dynamic top-volume
 // list has loaded for the first time.
 export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
-  { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '5m', isScalp: true },
-  { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '5m', isScalp: true },
-  { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', interval: '5m', isScalp: true },
-  { symbol: 'BNBUSDT', pair: 'BNB/USDT (PERP)', interval: '15m', isScalp: false },
-  { symbol: 'XRPUSDT', pair: 'XRP/USDT (PERP)', interval: '5m', isScalp: true },
-  { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '5m', isScalp: true },
-  { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', interval: '15m', isScalp: false },
-  { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', interval: '15m', isScalp: false },
-  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD PERP)', interval: '5m', isScalp: true },
-  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER PERP)', interval: '5m', isScalp: true },
+  { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'BNBUSDT', pair: 'BNB/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
+  { symbol: 'XRPUSDT', pair: 'XRP/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
+  { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
+  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  // Swing counterparts on the 4h chart — wider stops, targets with room to run.
+  { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '4h', isScalp: false, mode: 'SWING' },
+  { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '4h', isScalp: false, mode: 'SWING' },
+  { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', interval: '4h', isScalp: false, mode: 'SWING' },
   ...MACRO_SCAN_WATCHLIST,
 ];
 
 let cachedDynamicWatchlist: ScanTarget[] | null = null;
 let cachedDynamicWatchlistAt = 0;
 const DYNAMIC_LIST_TTL_MS = 5 * 60 * 1000; // refresh top-volume ranking every 5 min
+
+// Live 24h quote volume per symbol, captured while building the watchlist. Used
+// by the liquidity gate so we never issue a signal on an illiquid market.
+const quoteVolumeBySymbol = new Map<string, number>();
+export function getQuoteVolume(symbol: string): number | null {
+  return quoteVolumeBySymbol.has(symbol) ? (quoteVolumeBySymbol.get(symbol) as number) : null;
+}
+
+// How many of the top-volume pairs also get a SWING (4h) scan each cycle. Swing
+// setups are rarer and slower-moving, so covering the most liquid names is
+// enough — and it keeps the per-cycle request count bounded.
+const SWING_UNIVERSE = 40;
 
 /**
  * Builds the real scan universe: the top `topN` USDT perpetuals by 24h quote
@@ -64,18 +93,37 @@ export async function buildDynamicWatchlist(topN = 500): Promise<ScanTarget[]> {
   try {
     const tickers = await fetchTopCryptos();
     const cryptoOnly = tickers.filter(t => t.isFutures);
-    const top = cryptoOnly
+    for (const t of tickers) quoteVolumeBySymbol.set(t.symbol, t.volume24h ?? 0);
+
+    const ranked = cryptoOnly
       .slice()
       .sort((a, b) => b.volume24h - a.volume24h)
-      .slice(0, topN)
-      .map((t): ScanTarget => ({
-        symbol: t.symbol,
-        pair: t.pair,
-        interval: '1m',
-        isScalp: true,
-      }));
+      .slice(0, topN);
 
-    const list = top.length > 0 ? [...top, ...MACRO_SCAN_WATCHLIST] : DEFAULT_SCAN_WATCHLIST;
+    // SCALP targets on the 5-minute chart. 1m was deliberately dropped: its ATR
+    // is so small that targets landed inside the spread ("price 45, TP 46"), and
+    // its noise produced a large share of the losing signals.
+    const scalp = ranked.map((t): ScanTarget => ({
+      symbol: t.symbol,
+      pair: t.pair,
+      interval: '5m',
+      isScalp: true,
+      mode: 'SCALP',
+    }));
+
+    // SWING targets on the 4-hour chart for the most liquid names, so the site
+    // issues real position trades alongside the scalps instead of only scalps.
+    const swing = ranked.slice(0, SWING_UNIVERSE).map((t): ScanTarget => ({
+      symbol: t.symbol,
+      pair: t.pair,
+      interval: '4h',
+      isScalp: false,
+      mode: 'SWING',
+    }));
+
+    const list = scalp.length > 0
+      ? [...scalp, ...swing, ...MACRO_SCAN_WATCHLIST]
+      : DEFAULT_SCAN_WATCHLIST;
     cachedDynamicWatchlist = list;
     cachedDynamicWatchlistAt = now;
     return list;
@@ -137,7 +185,9 @@ export async function getScanBatch(): Promise<ScanTarget[]> {
   return combined.filter(t => (seen.has(t.symbol) ? false : (seen.add(t.symbol), true)));
 }
 
-const SCAN_CONCURRENCY = 20;
+// Each qualified candidate now also fetches its higher timeframes + order book,
+// so concurrency is trimmed to stay inside Binance's rate limits.
+const SCAN_CONCURRENCY = 12;
 
 // Shared in-flight batch scan. Several timers can fire near-simultaneously
 // (the 60s auto-scanner, the 5-min AI Signals refresh, the dashboard loader).
@@ -172,7 +222,9 @@ async function runScan(watchlist?: ScanTarget[]): Promise<Signal[]> {
     while (cursor < targets.length) {
       const target = targets[cursor++];
       try {
-        const candles = await fetchKlines(target.symbol, target.interval ?? '5m', 200);
+        const mode: TradeMode = target.mode ?? (target.isScalp === false ? 'SWING' : 'SCALP');
+        const profile = profileForAsset(mode, classifyAsset(target.symbol));
+        const candles = await fetchKlines(target.symbol, target.interval ?? profile.interval, 300);
         if (candles.length < 60) continue;
 
         const results = evaluateAllStrategies(candles);
@@ -190,17 +242,36 @@ async function runScan(watchlist?: ScanTarget[]): Promise<Signal[]> {
         if (!netDir) continue;
 
         const agreeing = triggered.filter(r => r.direction === netDir);
+        // Cheap pre-gate: don't spend higher-timeframe + order-book requests on a
+        // setup that can't clear the confluence bar anyway. Keeps us well inside
+        // Binance rate limits while still deep-verifying every real candidate.
+        if (agreeing.length < MIN_CONFLUENCE) continue;
+
         // Headline the setup with a continuation strategy (TREND/BREAKOUT) over a
         // pure reversal when available, so the labelled trade matches the bias.
         const catRank = (c?: string) => (c === 'TREND' ? 0 : c === 'BREAKOUT' ? 1 : c === 'ICT/SMC' ? 2 : 3);
         const ordered = agreeing.slice().sort((a, b) => catRank((a as { category?: string }).category) - catRank((b as { category?: string }).category));
         const best = ordered[0];
 
+        // FULL audit trail of every strategy, fired or not — this is what the
+        // Analysis Video narrates and what proves the signal was analyzed.
+        const strategyReads: StrategyRead[] = results.map(r => ({
+          name: r.name,
+          category: r.category,
+          triggered: r.triggered,
+          direction: r.direction,
+          reason: r.reason,
+        }));
+
+        // DEEP pass: higher-timeframe confirmation + live order-book liquidity.
+        const deep = await runDeepAnalysis(target, netDir, profile, strategyReads);
+
         // The hard quality gate lives inside buildSignalFromStrategyHit(): it
         // returns null unless the setup clears confluence + trend + momentum +
-        // conviction, so EVERY signal-emitting surface on the site inherits the
-        // same "analyze, then trade" bar from this one choke point.
-        const signal = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name));
+        // reward:risk + multi-timeframe + liquidity + conviction, so EVERY
+        // signal-emitting surface on the site inherits the same
+        // "analyze, then trade" bar from this one choke point.
+        const signal = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name), { deep });
         if (signal) signals.push(signal);
       } catch (e) {
         console.error(`[scanMarketForSignals] ${target.symbol} failed:`, e);
@@ -222,12 +293,126 @@ async function runScan(watchlist?: ScanTarget[]): Promise<Signal[]> {
   return signals;
 }
 
+/**
+ * Reads the directional bias of a candle set the same way on every timeframe:
+ * EMA50 vs EMA200 (or the longest available), plus where price sits relative to
+ * the slow EMA. Used for higher-timeframe confirmation.
+ */
+function readTrend(candles: CandleData[]): { trend: 'UP' | 'DOWN' | 'FLAT'; rsi: number | null; note: string } {
+  if (candles.length < 30) return { trend: 'FLAT', rsi: null, note: 'not enough candles to read this timeframe' };
+  const closes = candles.map(c => c.close);
+  const j = closes.length - 1;
+  const fast = ema(closes, Math.min(50, closes.length - 1))[j];
+  const slow = ema(closes, closes.length >= 200 ? 200 : Math.min(100, closes.length - 1))[j];
+  const r = rsi(closes, 14)[j];
+  const price = closes[j];
+  const spreadPct = slow ? Math.abs((fast - slow) / slow) * 100 : 0;
+  // A near-identical fast/slow EMA is a range, not a trend — say so instead of
+  // forcing a direction the chart doesn't actually have.
+  if (spreadPct < 0.05) return { trend: 'FLAT', rsi: r ?? null, note: `EMAs flat (${spreadPct.toFixed(3)}% apart) — ranging` };
+  const trend: 'UP' | 'DOWN' = fast > slow && price > slow ? 'UP' : fast < slow && price < slow ? 'DOWN' : (fast > slow ? 'UP' : 'DOWN');
+  return {
+    trend,
+    rsi: r ?? null,
+    note: `EMA${Math.min(50, closes.length - 1)} ${fast > slow ? 'above' : 'below'} slow EMA, price ${price > slow ? 'above' : 'below'} it, RSI ${r != null ? r.toFixed(1) : '--'}`,
+  };
+}
+
+/**
+ * The DEEP analysis pass: fetches every higher timeframe in the profile and the
+ * LIVE order book, so a signal is only issued once the direction is confirmed
+ * across timeframes and the market is actually liquid enough to trade. All data
+ * is fetched fresh at signal time — nothing stored or replayed.
+ */
+export async function runDeepAnalysis(
+  target: ScanTarget,
+  direction: 'LONG' | 'SHORT',
+  profile: RiskProfile,
+  strategyReads: StrategyRead[],
+): Promise<DeepContext> {
+  const wanted = direction === 'LONG' ? 'UP' : 'DOWN';
+
+  const timeframeChecks: TimeframeCheck[] = [];
+  for (const tf of profile.confirmTimeframes) {
+    try {
+      const c = await fetchKlines(target.symbol, tf, 220);
+      const read = readTrend(c);
+      timeframeChecks.push({
+        timeframe: tf,
+        trend: read.trend,
+        rsi: read.rsi != null ? +read.rsi.toFixed(1) : null,
+        // A FLAT higher timeframe is not a conflict — it simply isn't fighting
+        // the trade. Only an opposing trend counts against it.
+        agrees: read.trend === wanted || read.trend === 'FLAT',
+        note: read.note,
+      });
+    } catch (e) {
+      console.error(`[runDeepAnalysis] ${target.symbol} ${tf} failed:`, e);
+    }
+  }
+
+  let liquidity: LiquidityCheck | null = null;
+  try {
+    const book = await fetchOrderBook(target.symbol);
+    const bidDepth = book.bids.reduce((a, b) => a + b.amount, 0);
+    const askDepth = book.asks.reduce((a, b) => a + b.amount, 0);
+    const bestBid = book.bids[0]?.price ?? 0;
+    const bestAsk = book.asks[0]?.price ?? 0;
+    const mid = bestBid && bestAsk ? (bestBid + bestAsk) / 2 : 0;
+    const spreadPct = mid ? +(((bestAsk - bestBid) / mid) * 100).toFixed(4) : null;
+    const imbalance = askDepth > 0 ? +(bidDepth / askDepth).toFixed(2) : 0;
+    const quoteVolume24h = getQuoteVolume(target.symbol);
+
+    // "Adverse" = the book is stacked on the side that would run the trade over.
+    const adverse = direction === 'LONG'
+      ? (bidDepth > 0 ? askDepth / bidDepth : Infinity)
+      : (askDepth > 0 ? bidDepth / askDepth : Infinity);
+
+    const allLevels = [...book.bids, ...book.asks];
+    const biggest = allLevels.slice().sort((a, b) => b.amount - a.amount)[0];
+    const wall = biggest ? `Largest resting wall $${biggest.price} (${biggest.amount.toLocaleString()})` : null;
+
+    const volumeOk = quoteVolume24h === null || quoteVolume24h >= MIN_QUOTE_VOLUME_24H;
+    const bookOk = adverse <= MAX_ADVERSE_BOOK_RATIO;
+    const passed = volumeOk && bookOk;
+
+    liquidity = {
+      bidDepth: +bidDepth.toFixed(2),
+      askDepth: +askDepth.toFixed(2),
+      imbalance,
+      spreadPct,
+      quoteVolume24h,
+      wall,
+      passed,
+      note: `Book bid/ask depth ${bidDepth.toFixed(0)}/${askDepth.toFixed(0)} (imbalance ${imbalance}), spread ${spreadPct ?? '--'}%` +
+        `, 24h volume ${quoteVolume24h !== null ? `$${Math.round(quoteVolume24h).toLocaleString()}` : 'unknown'}` +
+        ` — ${passed ? 'liquid enough and book not stacked against the trade' : !volumeOk ? 'below the minimum 24h volume to trade safely' : `book stacked against the trade (${adverse.toFixed(2)}x, max ${MAX_ADVERSE_BOOK_RATIO}x)`}`,
+    };
+  } catch (e) {
+    console.error(`[runDeepAnalysis] order book ${target.symbol} failed:`, e);
+  }
+
+  return { timeframeChecks, liquidity, strategyReads };
+}
+
+/**
+ * Everything the deep (async) analysis pass discovered, handed to the signal
+ * builder so the gate can use it and the audit trail can report it. Built by
+ * runDeepAnalysis() from LIVE data at signal time — never stored/old data.
+ */
+export interface DeepContext {
+  timeframeChecks: TimeframeCheck[];
+  liquidity: LiquidityCheck | null;
+  /** Every strategy's read, triggered or not — the full 21-strategy audit. */
+  strategyReads?: StrategyRead[];
+}
+
 export function buildSignalFromStrategyHit(
   target: ScanTarget,
   candles: CandleData[],
   hit: { name: string; direction: 'LONG' | 'SHORT' | null; reason: string },
   confluenceStrategies: string[],
-  opts: { gate?: boolean } = {},
+  opts: { gate?: boolean; deep?: DeepContext } = {},
 ): Signal | null {
   if (!hit.direction) return null;
 
@@ -239,12 +424,19 @@ export function buildSignalFromStrategyHit(
 
   const entryPrice = closes[i];
   const digits = entryPrice < 1 ? 6 : entryPrice < 10 ? 4 : 2;
-  const dirMult = hit.direction === 'LONG' ? 1 : -1;
 
-  const stopLoss = +(entryPrice - dirMult * SL_ATR * atrVal).toFixed(digits);
-  const target1 = +(entryPrice + dirMult * TP1_ATR * atrVal).toFixed(digits);
-  const target2 = +(entryPrice + dirMult * TP2_ATR * atrVal).toFixed(digits);
-  const target3 = +(entryPrice + dirMult * TP3_ATR * atrVal).toFixed(digits);
+  const assetClass = classifyAsset(target.symbol);
+  const mode: TradeMode = target.mode ?? (target.isScalp === false ? 'SWING' : 'SCALP');
+  const profile: RiskProfile = profileForAsset(mode, assetClass);
+
+  // Levels come from the shared risk model, which guarantees TP1 is BOTH far
+  // enough away in percentage terms to be worth trading after fees AND farther
+  // from entry than the stop (>= MIN_RR). If the market is too quiet or too
+  // wild to build such a structure, it returns null and we refuse to signal —
+  // that is the fix for "price is 45 and it gives TP 46".
+  const levels = scaleToMinReward(entryPrice, atrVal, hit.direction, profile, digits);
+  if (!levels) return null;
+  const { stopLoss, target1, target2, target3 } = levels;
 
   const atrPct = atrVal / entryPrice;
   const leverage = suggestLeverage(atrPct);
@@ -288,47 +480,134 @@ export function buildSignalFromStrategyHit(
   // Scanner Sandbox) pass { gate: false } to inspect raw single-strategy reads.
   // ----------------------------------------------------------------------
   const enforceGate = opts.gate !== false;
-  if (enforceGate) {
-    // 1) Confluence — at least MIN_CONFLUENCE independent strategies must agree.
-    if (confluenceCount < MIN_CONFLUENCE) return null;
+  const gateChecks: GateCheck[] = [];
+  const deep = opts.deep;
+  const mtfConflicts = (deep?.timeframeChecks ?? []).filter(t => !t.agrees);
 
-    // 2) Trend regime — never fight a clearly-established trend. This blocks the
-    //    counter-trend knife-catches that were the main source of losing trades.
-    const ema50Arr = ema(closes, 50);
-    const ema200Arr = closes.length >= 200 ? ema(closes, 200) : ema(closes, Math.min(50, closes.length - 1));
-    const ema50v = ema50Arr[i];
-    const ema200v = ema200Arr[i];
-    const regimeUp = ema50v > ema200v;     // fast trend above slow = bullish regime
-    const regimeDown = ema50v < ema200v;   // fast trend below slow = bearish regime
-    const priceAbove200 = entryPrice > ema200v;
-    if (hit.direction === 'LONG' && regimeDown && !priceAbove200) return null;  // clear downtrend, don't buy
-    if (hit.direction === 'SHORT' && regimeUp && priceAbove200) return null;    // clear uptrend, don't short
+  // Every check is RECORDED (pass or fail) so the Analysis Video and the signal
+  // card can show exactly what was verified and why a setup was refused.
+  const record = (label: string, passed: boolean, detail: string) => {
+    gateChecks.push({ label, passed, detail });
+    return passed;
+  };
 
-    // 3) Momentum confirmation — RSI/MACD must not contradict the trade, and at
-    //    least one of them must actively support the direction.
-    const macdHist = macdRes.histogram[i];
-    const rsiSupportsLong = rsiVal >= 48;
-    const rsiSupportsShort = rsiVal <= 52;
-    const macdSupportsLong = macdHist > 0;
-    const macdSupportsShort = macdHist < 0;
-    if (hit.direction === 'LONG') {
-      if (rsiVal < 38) return null;                            // far too weak to be buying
-      if (!rsiSupportsLong && !macdSupportsLong) return null;  // neither indicator backs the long
-    } else {
-      if (rsiVal > 62) return null;                            // far too strong to be shorting
-      if (!rsiSupportsShort && !macdSupportsShort) return null;
-    }
+  const ema50Arr = ema(closes, 50);
+  const ema200Arr = closes.length >= 200 ? ema(closes, 200) : ema(closes, Math.min(50, closes.length - 1));
+  const ema50v = ema50Arr[i];
+  const ema200v = ema200Arr[i];
+  const regimeUp = ema50v > ema200v;
+  const regimeDown = ema50v < ema200v;
+  const priceAbove200 = entryPrice > ema200v;
+  const macdHist = macdRes.histogram[i];
 
-    // 4) Proven-loser guard — if we DO have a reliable historical win rate for
-    //    this strategy on this pair, it must clear break-even + a safety margin.
-    if (winProbability !== null && winProbability < MIN_BACKTEST_WINRATE) return null;
+  // 1) Confluence — at least MIN_CONFLUENCE independent strategies must agree.
+  record(
+    'Strategy confluence',
+    confluenceCount >= MIN_CONFLUENCE,
+    `${confluenceCount} of 21 strategies agree on ${hit.direction} (minimum ${MIN_CONFLUENCE})`,
+  );
 
-    // 5) Conviction floor — only genuinely high-quality composite setups issue.
-    if (confidenceScore < MIN_CONFIDENCE_TO_EMIT) return null;
-  }
+  // 2) Trend regime — never fight a clearly-established trend. This blocks the
+  //    counter-trend knife-catches that were the main source of losing trades.
+  const trendOk = hit.direction === 'LONG'
+    ? !(regimeDown && !priceAbove200)
+    : !(regimeUp && priceAbove200);
+  record(
+    'Trend regime (EMA50/EMA200)',
+    trendOk,
+    `EMA50 ${ema50v?.toFixed(digits)} vs EMA200 ${ema200v?.toFixed(digits)} — regime ${regimeUp ? 'bullish' : regimeDown ? 'bearish' : 'flat'}; trade is ${trendOk ? 'with' : 'against'} it`,
+  );
 
-  const position = suggestPositionSize(atrPct, leverage.max, confidenceScore);
-  const assetClass = classifyAsset(target.symbol);
+  // 3) Momentum confirmation — RSI/MACD must not contradict the trade, and at
+  //    least one of them must actively support the direction.
+  const rsiSupportsLong = rsiVal >= 48;
+  const rsiSupportsShort = rsiVal <= 52;
+  const macdSupportsLong = macdHist > 0;
+  const macdSupportsShort = macdHist < 0;
+  const momentumOk = hit.direction === 'LONG'
+    ? rsiVal >= 38 && (rsiSupportsLong || macdSupportsLong)
+    : rsiVal <= 62 && (rsiSupportsShort || macdSupportsShort);
+  record(
+    'Momentum (RSI + MACD)',
+    momentumOk,
+    `RSI ${rsiVal?.toFixed(1)}, MACD histogram ${macdHist?.toFixed(6)} — ${momentumOk ? 'supports' : 'does not support'} ${hit.direction}`,
+  );
+
+  // 4) Reward:risk and target distance — the structure must actually be worth
+  //    taking after fees. This is the check that kills "TP one tick away".
+  record(
+    'Reward:risk & target distance',
+    levels.rr >= MIN_RR && levels.tp1Pct >= profile.minTp1Pct,
+    `TP1 ${levels.tp1Pct}% away, stop ${levels.slPct}% away → 1:${levels.rr} (floor ${profile.minTp1Pct}% / 1:${MIN_RR})${levels.widened ? ' · levels scaled up to clear the floor, ratio unchanged' : ''}`,
+  );
+
+  // 5) Multi-timeframe verification — every higher timeframe checked must agree.
+  record(
+    'Multi-timeframe confirmation',
+    deep ? mtfConflicts.length <= MAX_MTF_CONFLICTS : true,
+    deep
+      ? (deep.timeframeChecks.length
+          ? deep.timeframeChecks.map(t => `${t.timeframe}: ${t.trend}${t.agrees ? ' ✓' : ' ✗'}`).join(' · ')
+          : 'no higher-timeframe data available')
+      : 'not requested for this run (base-timeframe read only)',
+  );
+
+  // 6) Live liquidity — order book must not be stacked against the trade and the
+  //    market must be liquid enough to fill at these levels.
+  record(
+    'Market liquidity (live order book)',
+    deep?.liquidity ? deep.liquidity.passed : true,
+    deep?.liquidity ? deep.liquidity.note : 'not requested for this run',
+  );
+
+  // 7) Proven-loser guard — if we DO have a reliable historical win rate for
+  //    this strategy on this pair, it must clear break-even + a safety margin.
+  record(
+    'Historical win rate',
+    winProbability === null || winProbability >= MIN_BACKTEST_WINRATE,
+    winProbability !== null
+      ? `${winProbability}% over ${sampleSize} walk-forward trades (floor ${MIN_BACKTEST_WINRATE}%)`
+      : `not enough resolved trades yet (${sampleSize}) — reported honestly rather than guessed`,
+  );
+
+  // 8) Conviction floor — only genuinely high-quality composite setups issue.
+  record(
+    'Composite conviction',
+    confidenceScore >= MIN_CONFIDENCE_TO_EMIT,
+    `${confidenceScore}/100 (floor ${MIN_CONFIDENCE_TO_EMIT})`,
+  );
+
+  const failed = gateChecks.find(c => !c.passed);
+  if (enforceGate && failed) return null;
+
+  // Position size uses the REAL stop distance (not a generic ATR proxy), so the
+  // suggested size actually risks the stated % of the account.
+  const position = suggestPositionSize(levels.slPct / 100, leverage.max, confidenceScore, true);
+
+  const trendNote = `EMA50 ${ema50v?.toFixed(digits)} / EMA200 ${ema200v?.toFixed(digits)} — ${regimeUp ? 'bullish regime' : regimeDown ? 'bearish regime' : 'flat regime'}`;
+
+  const analysis: SignalAnalysis = {
+    symbol: target.symbol,
+    pair: target.pair,
+    mode,
+    baseTimeframe: target.interval ?? profile.interval,
+    takenAt: new Date().toISOString(),
+    direction: hit.direction,
+    strategyReads: deep?.strategyReads ?? [],
+    triggeredCount: (deep?.strategyReads ?? []).filter(s => s.triggered).length,
+    agreeingStrategies: confluenceStrategies,
+    timeframeChecks: deep?.timeframeChecks ?? [],
+    liquidity: deep?.liquidity ?? null,
+    gateChecks,
+    verdict: failed ? 'REJECTED' : 'TRADE',
+    rejectionReason: failed ? `${failed.label}: ${failed.detail}` : undefined,
+    rsi: rsiVal != null && !isNaN(rsiVal) ? +rsiVal.toFixed(1) : null,
+    macdHistogram: macdHist != null && !isNaN(macdHist) ? +macdHist.toFixed(6) : null,
+    atrPercent: +(atrPct * 100).toFixed(2),
+    volumeDelta: +delta[i].toFixed(2),
+    trendNote,
+    candles: candles.slice(-120),
+  };
 
   const rsiDivergenceNote = divergence
     ? ` | RSI divergence: ${divergence.toUpperCase()} (${divergence === (hit.direction === 'LONG' ? 'bullish' : 'bearish') ? 'confirms' : 'caution'})`
@@ -346,19 +625,19 @@ export function buildSignalFromStrategyHit(
     stopLoss,
     leverage: leverage.label,
     winProbability: winProbability ?? 0,
-    riskReward: `TP1 ${riskRewardLabel(TP1_ATR)} / TP2 ${riskRewardLabel(TP2_ATR)} / TP3 ${riskRewardLabel(TP3_ATR)}`,
+    riskReward: `TP1 1:${levels.rr} (${levels.tp1Pct}% away) / TP2 ${riskRewardLabel(profile.tp2Atr, profile.slAtr)} / TP3 ${riskRewardLabel(profile.tp3Atr, profile.slAtr)}`,
     strategy: hit.name as Signal['strategy'],
     status: 'ACTIVE',
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    timeframe: `${target.interval ?? '5m'}${target.isScalp ? ' Scalp' : ' Intraday'}`,
+    timeframe: `${target.interval ?? profile.interval} ${mode === 'SWING' ? 'Swing' : 'Scalp'}`,
     rationale: (confluenceStrategies.length > 1
       ? `Confluence of ${confluenceStrategies.length} strategies (${confluenceStrategies.join(', ')}): ${hit.reason}`
       : hit.reason) + rsiDivergenceNote,
     isVipOnly: false,
-    isScalp: target.isScalp,
+    isScalp: mode === 'SCALP',
     footprintDelta: +delta[i].toFixed(2),
     spoofingWall: undefined,
-    liquidityWall: undefined,
+    liquidityWall: deep?.liquidity?.wall ?? undefined,
     orderBlockZone: `Recent range: $${suppLevel} - $${resLevel}`,
     demandSupplyZone: hit.direction === 'LONG' ? `Support ~$${suppLevel}` : `Resistance ~$${resLevel}`,
     ictPattern: confluenceStrategies.join(' + '),
@@ -379,6 +658,17 @@ export function buildSignalFromStrategyHit(
     confidenceScore,
     confluenceCount,
     assetClass,
+    // ---- mode + audit trail -------------------------------------------------
+    mode,
+    tp1DistancePct: levels.tp1Pct,
+    slDistancePct: levels.slPct,
+    rrRatio: levels.rr,
+    levelsWidened: levels.widened,
+    mtfNote: deep && deep.timeframeChecks.length
+      ? `Verified on ${deep.timeframeChecks.map(t => t.timeframe).join(', ')} — ${mtfConflicts.length === 0 ? 'all agree' : `${mtfConflicts.length} conflict(s)`}`
+      : undefined,
+    liquidityNote: deep?.liquidity?.note,
+    analysis,
   } as Signal;
 }
 
@@ -443,6 +733,103 @@ export function analyzeMarketOverview(signals: Signal[], scannedCount: number): 
     strongest,
     btcTrend,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+export interface LiveAnalysisResult {
+  /** Always present — the full audit trail, even when the verdict is REJECTED. */
+  analysis: SignalAnalysis;
+  /** Only set when the setup passed every gate. */
+  signal: Signal | null;
+}
+
+/**
+ * Runs the COMPLETE analysis for one market against LIVE data, right now, and
+ * returns the full audit trail whether or not a trade qualifies. This is the
+ * single source the Analysis Video studio narrates, which is why it re-runs all
+ * 21 strategies, the higher-timeframe verification and the live order-book
+ * liquidity read on the spot instead of replaying anything stored.
+ */
+export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysisResult> {
+  const mode: TradeMode = target.mode ?? (target.isScalp === false ? 'SWING' : 'SCALP');
+  const assetClass = classifyAsset(target.symbol);
+  const profile = profileForAsset(mode, assetClass);
+  const interval = target.interval ?? profile.interval;
+
+  const candles = await fetchKlines(target.symbol, interval, 300);
+
+  const emptyAnalysis = (reason: string, dir: 'LONG' | 'SHORT' | null, reads: StrategyRead[]): SignalAnalysis => ({
+    symbol: target.symbol,
+    pair: target.pair,
+    mode,
+    baseTimeframe: interval,
+    takenAt: new Date().toISOString(),
+    direction: dir,
+    strategyReads: reads,
+    triggeredCount: reads.filter(r => r.triggered).length,
+    agreeingStrategies: [],
+    timeframeChecks: [],
+    liquidity: null,
+    gateChecks: [],
+    verdict: 'REJECTED',
+    rejectionReason: reason,
+    rsi: null,
+    macdHistogram: null,
+    atrPercent: null,
+    volumeDelta: null,
+    trendNote: reason,
+    candles: candles.slice(-120),
+  });
+
+  if (candles.length < 60) {
+    return { analysis: emptyAnalysis('Not enough live candles returned for this market to analyze it honestly.', null, []), signal: null };
+  }
+
+  const results = evaluateAllStrategies(candles);
+  const strategyReads: StrategyRead[] = results.map(r => ({
+    name: r.name,
+    category: r.category,
+    triggered: r.triggered,
+    direction: r.direction,
+    reason: r.reason,
+  }));
+
+  const triggered = results.filter(r => r.triggered && r.direction);
+  if (triggered.length === 0) {
+    return { analysis: emptyAnalysis('No strategy fired on the current candles — nothing to trade here right now.', null, strategyReads), signal: null };
+  }
+
+  const longVotes = triggered.filter(r => r.direction === 'LONG').length;
+  const shortVotes = triggered.filter(r => r.direction === 'SHORT').length;
+  const netDir: 'LONG' | 'SHORT' | null =
+    longVotes > shortVotes ? 'LONG' : shortVotes > longVotes ? 'SHORT' : null;
+  if (!netDir) {
+    return {
+      analysis: emptyAnalysis(`Strategies are evenly split (${longVotes} long vs ${shortVotes} short) — an ambiguous read is not a trade.`, null, strategyReads),
+      signal: null,
+    };
+  }
+
+  const agreeing = triggered.filter(r => r.direction === netDir);
+  const catRank = (c?: string) => (c === 'TREND' ? 0 : c === 'BREAKOUT' ? 1 : c === 'ICT/SMC' ? 2 : 3);
+  const best = agreeing.slice().sort((a, b) => catRank(a.category) - catRank(b.category))[0];
+
+  const deep = await runDeepAnalysis(target, netDir, profile, strategyReads);
+
+  // Built UNGATED so the audit trail always exists; the verdict inside the
+  // analysis says whether it qualified, and we only hand back a tradable signal
+  // when it did. Nothing is invented — every line comes from the live read.
+  const ungated = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name), { gate: false, deep });
+  if (!ungated || !ungated.analysis) {
+    return {
+      analysis: emptyAnalysis('No tradable risk structure exists at current volatility — targets would sit too close to entry to be worth the fees.', netDir, strategyReads),
+      signal: null,
+    };
+  }
+
+  return {
+    analysis: ungated.analysis,
+    signal: ungated.analysis.verdict === 'TRADE' ? ungated : null,
   };
 }
 

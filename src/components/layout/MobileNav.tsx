@@ -9,7 +9,8 @@ import {
   Instagram,
   Lock,
   Sparkles,
-  Settings
+  Settings,
+  Video
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -40,6 +41,11 @@ const MobileNav: React.FC = () => {
       <Link to="/scanner" className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${isActive('/scanner') ? 'text-amber-600' : 'text-slate-500'}`}>
         <Scan className="h-5 w-5" />
         Scanner
+      </Link>
+
+      <Link to="/analysis-video" className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${isActive('/analysis-video') ? 'text-rose-600' : 'text-slate-500'}`}>
+        <Video className="h-5 w-5" />
+        Video
       </Link>
 
       <Link to="/bot-settings" className={`flex flex-col items-center gap-0.5 text-[10px] font-bold ${isActive('/bot-settings') ? 'text-indigo-600' : 'text-slate-500'}`}>

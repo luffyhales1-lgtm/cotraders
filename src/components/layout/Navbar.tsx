@@ -19,7 +19,8 @@ import {
   Menu,
   X,
   Lock,
-  BookMarked
+  BookMarked,
+  Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: '/charts', label: 'Pro Charts', icon: LineChart, iconColor: 'text-indigo-600', vipOnly: true },
   { path: '/scanner', label: '1000+ Scanner', icon: Scan, iconColor: 'text-amber-600', vipOnly: true },
   { path: '/analyze', label: 'AI Chart Analysis', icon: ScanEye, iconColor: 'text-indigo-600', vipOnly: true },
+  { path: '/analysis-video', label: 'Analysis Video', icon: Video, iconColor: 'text-rose-600' },
   { path: '/journal', label: 'Paper Journal', icon: BookMarked, iconColor: 'text-emerald-600' },
   { path: '/news', label: 'News', icon: Newspaper, iconColor: 'text-sky-600' },
   { path: '/analytics', label: 'Analytics', icon: Award, iconColor: 'text-indigo-600' },
