@@ -38,9 +38,12 @@ export interface RiskProfile {
 }
 
 /**
- * SCALP — fast intraday trades on the 5-minute chart.
- * 1-minute was deliberately dropped: its ATR is so small that targets landed
- * inside the spread, and its noise was a real source of losing signals.
+ * SCALP — fast intraday trades on the 15-minute chart.
+ * 1-minute AND 5-minute were both deliberately dropped: their ATR is so small
+ * (BTC's 5m ATR is ~0.08% of price) that a 1.1% target needs the whole structure
+ * stretched 5-7x, which the stretch guard correctly refuses — so every scalp got
+ * rejected with "no tradable risk structure". 15m ATR is naturally 3-4x larger,
+ * so the 1.1% floor is reachable without distorting the levels.
  * TP1 is forced to at least 1.1% away, at a 1:1.50 reward:risk.
  */
 export const SCALP_PROFILE: RiskProfile = {
@@ -52,9 +55,9 @@ export const SCALP_PROFILE: RiskProfile = {
   minTp1Pct: 1.1,
   maxTp1Pct: 8,
   maxForwardBars: 40,
-  interval: '5m',
-  confirmTimeframes: ['15m', '1h'],
-  label: 'Scalp · 5m · TP1 ≥ 1.1%',
+  interval: '15m',
+  confirmTimeframes: ['1h', '4h'],
+  label: 'Scalp · 15m · TP1 ≥ 1.1%',
 };
 
 /**
@@ -78,6 +81,33 @@ export const SWING_PROFILE: RiskProfile = {
 
 export function profileFor(mode: TradeMode): RiskProfile {
   return mode === 'SWING' ? SWING_PROFILE : SCALP_PROFILE;
+}
+
+/**
+ * How far the ATR-derived structure may be stretched to reach the percentage
+ * floor. Beyond this the stop would sit so many ATRs away that the "volatility
+ * stop" stops meaning anything, so the honest answer is to refuse the trade and
+ * let the caller step up a timeframe instead.
+ */
+export const MAX_ATR_STRETCH = 6;
+
+/**
+ * When a market is too quiet to produce a tradable structure on its native
+ * timeframe, this is the ladder the analyzer steps UP through rather than
+ * distorting the levels. Higher timeframe = naturally larger ATR = the same
+ * percentage floor becomes reachable without stretching.
+ */
+export const TIMEFRAME_LADDER: Record<TradeMode, string[]> = {
+  SCALP: ['15m', '1h', '4h'],
+  SWING: ['4h', '1d'],
+};
+
+/** Next timeframe up from `interval` for this mode, or null at the top of the ladder. */
+export function nextTimeframeUp(mode: TradeMode, interval: string): string | null {
+  const ladder = TIMEFRAME_LADDER[mode];
+  const i = ladder.indexOf(interval);
+  if (i === -1) return ladder[0] === interval ? null : ladder[0];
+  return i + 1 < ladder.length ? ladder[i + 1] : null;
 }
 
 /**
@@ -181,8 +211,7 @@ export function scaleToMinReward(
 
   // Scale factor needed so TP1 clears the percentage floor. >=1 always.
   const scale = rawTp1Pct >= floor ? 1 : floor / rawTp1Pct;
-  const MAX_STRETCH = 4;
-  if (scale > MAX_STRETCH) return null; // market far too quiet for this mode
+  if (scale > MAX_ATR_STRETCH) return null; // market far too quiet for this mode
 
   const atrUsed = atrVal * scale;
   const tp1Pct = (profile.tp1Atr * atrUsed / entryPrice) * 100;

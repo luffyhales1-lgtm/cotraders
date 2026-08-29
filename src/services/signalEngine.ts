@@ -6,7 +6,7 @@ import {
   MIN_CONFLUENCE, MIN_CONFIDENCE_TO_EMIT, MIN_BACKTEST_WINRATE, MIN_RR,
   MAX_MTF_CONFLICTS, MAX_ADVERSE_BOOK_RATIO, MIN_QUOTE_VOLUME_24H,
   riskRewardLabel, suggestLeverage, suggestPositionSize,
-  profileForAsset, scaleToMinReward, RiskProfile,
+  profileForAsset, scaleToMinReward, RiskProfile, nextTimeframeUp,
 } from './riskConfig';
 import { fetchKlines, fetchOrderBook, fetchTopCryptos } from './binanceApi';
 import { FOREX_MAJORS } from './forexApi';
@@ -37,16 +37,16 @@ export const MACRO_SCAN_WATCHLIST: ScanTarget[] = FOREX_MAJORS.map(f => ({
 // imports DEFAULT_SCAN_WATCHLIST directly) before the dynamic top-volume
 // list has loaded for the first time.
 export const DEFAULT_SCAN_WATCHLIST: ScanTarget[] = [
-  { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
-  { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
-  { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'SOLUSDT', pair: 'SOL/USDT (PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
   { symbol: 'BNBUSDT', pair: 'BNB/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
-  { symbol: 'XRPUSDT', pair: 'XRP/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
-  { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'XRPUSDT', pair: 'XRP/USDT (PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'SUIUSDT', pair: 'SUI/USDT (PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
   { symbol: 'NEARUSDT', pair: 'NEAR/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
   { symbol: 'AVAXUSDT', pair: 'AVAX/USDT (PERP)', interval: '15m', isScalp: false, mode: 'SCALP' },
-  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
-  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER PERP)', interval: '5m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'XAUUSDT', pair: 'XAU/USD (GOLD PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
+  { symbol: 'XAGUSDT', pair: 'XAG/USD (SILVER PERP)', interval: '15m', isScalp: true, mode: 'SCALP' },
   // Swing counterparts on the 4h chart — wider stops, targets with room to run.
   { symbol: 'BTCUSDT', pair: 'BTC/USDT (PERP)', interval: '4h', isScalp: false, mode: 'SWING' },
   { symbol: 'ETHUSDT', pair: 'ETH/USDT (PERP)', interval: '4h', isScalp: false, mode: 'SWING' },
@@ -100,13 +100,14 @@ export async function buildDynamicWatchlist(topN = 500): Promise<ScanTarget[]> {
       .sort((a, b) => b.volume24h - a.volume24h)
       .slice(0, topN);
 
-    // SCALP targets on the 5-minute chart. 1m was deliberately dropped: its ATR
-    // is so small that targets landed inside the spread ("price 45, TP 46"), and
-    // its noise produced a large share of the losing signals.
+    // SCALP targets on the 15-minute chart, matching SCALP_PROFILE.interval.
+    // 1m and 5m were both deliberately dropped: their ATR is so small that
+    // targets landed inside the spread ("price 45, TP 46") and the 1.1% minimum
+    // was mathematically unreachable, so every scalp got rejected outright.
     const scalp = ranked.map((t): ScanTarget => ({
       symbol: t.symbol,
       pair: t.pair,
-      interval: '5m',
+      interval: '15m',
       isScalp: true,
       mode: 'SCALP',
     }));
@@ -743,22 +744,30 @@ export interface LiveAnalysisResult {
   signal: Signal | null;
 }
 
-/**
- * Runs the COMPLETE analysis for one market against LIVE data, right now, and
- * returns the full audit trail whether or not a trade qualifies. This is the
- * single source the Analysis Video studio narrates, which is why it re-runs all
- * 21 strategies, the higher-timeframe verification and the live order-book
- * liquidity read on the spot instead of replaying anything stored.
- */
-export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysisResult> {
-  const mode: TradeMode = target.mode ?? (target.isScalp === false ? 'SWING' : 'SCALP');
-  const assetClass = classifyAsset(target.symbol);
-  const profile = profileForAsset(mode, assetClass);
-  const interval = target.interval ?? profile.interval;
+interface LiveAttempt extends LiveAnalysisResult {
+  /**
+   * True when the ONLY thing wrong was that this timeframe is too quiet to build
+   * a tradable structure. That is the one rejection worth retrying one timeframe
+   * up — every other rejection is a real read of the market and must stand.
+   */
+  tooQuiet: boolean;
+}
 
+/** Runs the whole live pass on ONE timeframe. Never invents data. */
+async function analyzeOnTimeframe(
+  target: ScanTarget,
+  mode: TradeMode,
+  profile: RiskProfile,
+  interval: string,
+): Promise<LiveAttempt> {
   const candles = await fetchKlines(target.symbol, interval, 300);
 
-  const emptyAnalysis = (reason: string, dir: 'LONG' | 'SHORT' | null, reads: StrategyRead[]): SignalAnalysis => ({
+  // NOTE: `deep` is threaded into EVERY exit path below. The higher-timeframe
+  // checks and the order-book read are expensive and, once fetched, they are
+  // part of the audit trail whether or not a trade qualifies — dropping them
+  // would make the video claim "no higher-timeframe data was available" when it
+  // had in fact been fetched and used.
+  const reject = (reason: string, dir: 'LONG' | 'SHORT' | null, reads: StrategyRead[], deep?: DeepContext): SignalAnalysis => ({
     symbol: target.symbol,
     pair: target.pair,
     mode,
@@ -767,9 +776,9 @@ export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysi
     direction: dir,
     strategyReads: reads,
     triggeredCount: reads.filter(r => r.triggered).length,
-    agreeingStrategies: [],
-    timeframeChecks: [],
-    liquidity: null,
+    agreeingStrategies: reads.filter(r => r.triggered && r.direction === dir).map(r => r.name),
+    timeframeChecks: deep?.timeframeChecks ?? [],
+    liquidity: deep?.liquidity ?? null,
     gateChecks: [],
     verdict: 'REJECTED',
     rejectionReason: reason,
@@ -782,7 +791,11 @@ export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysi
   });
 
   if (candles.length < 60) {
-    return { analysis: emptyAnalysis('Not enough live candles returned for this market to analyze it honestly.', null, []), signal: null };
+    return {
+      analysis: reject('Not enough live candles returned for this market to analyze it honestly.', null, []),
+      signal: null,
+      tooQuiet: false,
+    };
   }
 
   const results = evaluateAllStrategies(candles);
@@ -796,7 +809,11 @@ export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysi
 
   const triggered = results.filter(r => r.triggered && r.direction);
   if (triggered.length === 0) {
-    return { analysis: emptyAnalysis('No strategy fired on the current candles — nothing to trade here right now.', null, strategyReads), signal: null };
+    return {
+      analysis: reject('No strategy fired on the current candles — nothing to trade here right now.', null, strategyReads),
+      signal: null,
+      tooQuiet: false,
+    };
   }
 
   const longVotes = triggered.filter(r => r.direction === 'LONG').length;
@@ -805,8 +822,9 @@ export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysi
     longVotes > shortVotes ? 'LONG' : shortVotes > longVotes ? 'SHORT' : null;
   if (!netDir) {
     return {
-      analysis: emptyAnalysis(`Strategies are evenly split (${longVotes} long vs ${shortVotes} short) — an ambiguous read is not a trade.`, null, strategyReads),
+      analysis: reject(`Strategies are evenly split (${longVotes} long vs ${shortVotes} short) — an ambiguous read is not a trade.`, null, strategyReads),
       signal: null,
+      tooQuiet: false,
     };
   }
 
@@ -814,23 +832,71 @@ export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysi
   const catRank = (c?: string) => (c === 'TREND' ? 0 : c === 'BREAKOUT' ? 1 : c === 'ICT/SMC' ? 2 : 3);
   const best = agreeing.slice().sort((a, b) => catRank(a.category) - catRank(b.category))[0];
 
-  const deep = await runDeepAnalysis(target, netDir, profile, strategyReads);
+  const deep = await runDeepAnalysis({ ...target, interval, mode }, netDir, profile, strategyReads);
 
   // Built UNGATED so the audit trail always exists; the verdict inside the
   // analysis says whether it qualified, and we only hand back a tradable signal
   // when it did. Nothing is invented — every line comes from the live read.
-  const ungated = buildSignalFromStrategyHit(target, candles, best, agreeing.map(a => a.name), { gate: false, deep });
+  const ungated = buildSignalFromStrategyHit(
+    { ...target, interval, mode },
+    candles,
+    best,
+    agreeing.map(a => a.name),
+    { gate: false, deep },
+  );
   if (!ungated || !ungated.analysis) {
     return {
-      analysis: emptyAnalysis('No tradable risk structure exists at current volatility — targets would sit too close to entry to be worth the fees.', netDir, strategyReads),
+      analysis: reject(
+        `At ${interval} this market is too quiet for a tradable structure — a target that clears the ${profile.minTp1Pct}% minimum would sit too many ATRs away to call it a volatility stop.`,
+        netDir,
+        strategyReads,
+        deep,
+      ),
       signal: null,
+      tooQuiet: true,
     };
   }
 
   return {
     analysis: ungated.analysis,
     signal: ungated.analysis.verdict === 'TRADE' ? ungated : null,
+    tooQuiet: false,
   };
+}
+
+/**
+ * Runs the COMPLETE analysis for one market against LIVE data, right now, and
+ * returns the full audit trail whether or not a trade qualifies. This is the
+ * single source the Analysis Video studio narrates, which is why it re-runs all
+ * 21 strategies, the higher-timeframe verification and the live order-book
+ * liquidity read on the spot instead of replaying anything stored.
+ *
+ * If the native timeframe is too quiet to build a structure that clears the
+ * minimum target distance, it steps UP the timeframe ladder instead of either
+ * distorting the levels or giving up — and says which timeframe it settled on.
+ */
+export async function analyzeSymbolLive(target: ScanTarget): Promise<LiveAnalysisResult> {
+  const mode: TradeMode = target.mode ?? (target.isScalp === false ? 'SWING' : 'SCALP');
+  const assetClass = classifyAsset(target.symbol);
+  const profile = profileForAsset(mode, assetClass);
+
+  let interval: string | null = target.interval ?? profile.interval;
+  const tried: string[] = [];
+  let attempt: LiveAttempt | null = null;
+
+  while (interval) {
+    tried.push(interval);
+    attempt = await analyzeOnTimeframe(target, mode, profile, interval);
+    if (!attempt.tooQuiet) break;
+    interval = nextTimeframeUp(mode, interval);
+  }
+
+  const result = attempt as LiveAttempt;
+  if (tried.length > 1) {
+    const note = `Stepped up from ${tried[0]} to ${tried[tried.length - 1]}: the lower timeframe was too quiet for a target worth taking.`;
+    result.analysis.trendNote = `${note} ${result.analysis.trendNote}`;
+  }
+  return { analysis: result.analysis, signal: result.signal };
 }
 
 export function describeMomentum(
